@@ -27,8 +27,10 @@ password.txt
 # Dist files
 dist
 
-# lib
+# lib build artifacts
 libxatu.so
+libxatu.dylib
+libxatu.dll
 libxatu.h
 
 # manual testing

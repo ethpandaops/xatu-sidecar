@@ -78,10 +78,10 @@ The library accepts a YAML configuration with the following structure:
 
 ```yaml
 log_level: info
-xatu:
+processor:
   name: my-beacon-node
   outputs:
-    - name: mainnet
+    - name: xatu-server-1
       type: xatu
       config:
         address: localhost:8080
@@ -89,6 +89,8 @@ xatu:
         maxQueueSize: 100000
         batchTimeout: 5s
         workers: 1
+    - name: standard-out
+      type: stdout
   ethereum:
     genesis_time: 1606824023
     seconds_per_slot: 12

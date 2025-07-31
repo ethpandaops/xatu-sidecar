@@ -24,8 +24,8 @@ var (
 )
 
 type Config struct {
-	LogLevel *string           `yaml:"log_level,omitempty"`
-	Xatu     *processor.Config `yaml:"xatu"`
+	LogLevel  *string           `yaml:"log_level,omitempty"`
+	Processor *processor.Config `yaml:"processor"`
 }
 
 //export Init
@@ -67,12 +67,12 @@ func Init(configJSON *byte) int32 {
 	}
 
 	// Set default NTP server if not specified
-	if config.Xatu.NTPServer == "" {
-		config.Xatu.NTPServer = "time.google.com"
+	if config.Processor.NTPServer == "" {
+		config.Processor.NTPServer = "time.google.com"
 	}
 
 	var err error
-	handler, err = processor.NewHandler(context.Background(), log, config.Xatu)
+	handler, err = processor.NewHandler(context.Background(), log, config.Processor)
 	if err != nil {
 		log.WithError(err).Error("Failed to create processor handler")
 
