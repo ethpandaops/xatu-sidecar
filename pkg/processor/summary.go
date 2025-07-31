@@ -2,8 +2,6 @@ package processor
 
 import (
 	"context"
-	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -48,42 +46,26 @@ func (s *Summary) Start(ctx context.Context) {
 func (s *Summary) Print() {
 	events := s.GetEventStreamEvents()
 
-	// Build a sorted slice of event stream topics and counts
-	type topicCount struct {
-		topic string
-		count uint64
-	}
-
-	sortedEvents := make([]topicCount, 0, len(events))
 	var totalEvents uint64
-	for topic, count := range events {
-		sortedEvents = append(sortedEvents, topicCount{topic, count})
+	for _, count := range events {
 		totalEvents += count
 	}
 
-	sort.Slice(sortedEvents, func(i, j int) bool {
-		return sortedEvents[i].count > sortedEvents[j].count
-	})
-
-	// Log summary header
-	s.log.WithFields(logrus.Fields{
+	// Build log fields including all event counts
+	fields := logrus.Fields{
 		"total_events":    totalEvents,
 		"events_exported": s.GetEventsExported(),
 		"events_failed":   s.GetFailedEvents(),
 		"interval":        s.printInterval,
-	}).Info("Event summary")
-
-	// Log per-event type breakdown if there are events
-	if len(sortedEvents) > 0 {
-		s.log.Info("Event breakdown:")
-		for _, tc := range sortedEvents {
-			percentage := float64(tc.count) / float64(totalEvents) * 100
-			s.log.WithFields(logrus.Fields{
-				"count":      tc.count,
-				"percentage": fmt.Sprintf("%.1f%%", percentage),
-			}).Infof("  %s", tc.topic)
-		}
 	}
+
+	// Add individual event counts to fields
+	for topic, count := range events {
+		fields[topic] = count
+	}
+
+	// Log everything in a single line
+	s.log.WithFields(fields).Info("Event summary")
 
 	s.Reset()
 }
