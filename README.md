@@ -66,12 +66,6 @@ Gracefully shutdown the library
 void Shutdown();
 ```
 
-### GetStatus
-Get current library status
-```c
-const char* GetStatus();
-```
-
 ## Configuration
 
 The library accepts a YAML configuration with the following structure:

@@ -162,24 +162,4 @@ func Shutdown() {
 	}
 }
 
-//export GetStatus
-func GetStatus() *byte {
-	status := map[string]interface{}{
-		"initialized": handler != nil,
-		"mode":        "in-process",
-	}
-
-	jsonBytes, err := json.Marshal(status)
-	if err != nil {
-		return (*byte)(unsafe.Pointer(C.CString(`{"error": "failed to marshal status"}`)))
-	}
-
-	return (*byte)(unsafe.Pointer(C.CString(string(jsonBytes))))
-}
-
-//export FreeString
-func FreeString(s *byte) {
-	C.free(unsafe.Pointer(s))
-}
-
 func main() {} // Required for building
