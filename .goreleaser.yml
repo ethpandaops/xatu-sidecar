@@ -1,0 +1,180 @@
+# GoReleaser configuration for xatu-sidecar
+# This builds shared libraries for multiple platforms and architectures
+
+project_name: xatu-sidecar
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: xatu-sidecar
+    main: .
+    binary: libxatu
+    
+    # Build shared library
+    buildmode: c-shared
+    
+    # Enable CGO for FFI
+    env:
+      - CGO_ENABLED=1
+    
+    # Build flags
+    flags:
+      - -trimpath
+    
+    # Linker flags
+    ldflags:
+      - -s -w
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
+    
+    # Target platforms and architectures
+    goos:
+      - linux
+      - darwin
+      - windows
+    
+    goarch:
+      - amd64
+      - arm64
+    
+    # Platform/arch combinations to skip
+    ignore:
+      - goos: windows
+        goarch: arm64  # Windows ARM64 support is limited
+    
+    # Custom environment variables for cross-compilation
+    overrides:
+      - goos: windows
+        goarch: amd64
+        env:
+          - CC=x86_64-w64-mingw32-gcc
+          - CXX=x86_64-w64-mingw32-g++
+      - goos: linux
+        goarch: arm64
+        env:
+          - CC=aarch64-linux-gnu-gcc
+          - CXX=aarch64-linux-gnu-g++
+      - goos: darwin
+        goarch: arm64
+        env:
+          - CC=oa64-clang
+          - CXX=oa64-clang++
+      - goos: darwin
+        goarch: amd64
+        env:
+          - CC=o64-clang
+          - CXX=o64-clang++
+
+archives:
+  - id: shared-libs
+    format: tar.gz
+    
+    # Use .zip for Windows
+    format_overrides:
+      - goos: windows
+        format: zip
+    
+    # Archive name template
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    
+    # Include the generated header file
+    files:
+      - src: libxatu.h
+        dst: libxatu.h
+        info:
+          mode: 0644
+    
+    # Platform-specific file naming
+    replacements:
+      darwin: macos
+      amd64: x86_64
+      arm64: aarch64
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+  groups:
+    - title: 'Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+# GitHub Release
+release:
+  github:
+    owner: ethpandaops  # Update this
+    name: xatu-sidecar   # Update this
+  
+  # Release notes
+  header: |
+    ## xatu-sidecar v{{ .Version }}
+    
+    Embeddable beacon chain event streaming library for Ethereum consensus clients.
+    
+    ### Installation
+    
+    Download the appropriate shared library for your platform and architecture:
+    - Linux: `libxatu.so`
+    - macOS: `libxatu.dylib`
+    - Windows: `libxatu.dll`
+    
+    Include the `libxatu.h` header file in your project.
+  
+  footer: |
+    ## Verifying checksums
+    
+    ```bash
+    sha256sum -c checksums.txt
+    ```
+    
+    ## Integration
+    
+    See the [README](https://github.com/ethpandaops/xatu-sidecar#readme) for integration instructions.
+  
+  # Mark as prerelease for alpha/beta versions
+  prerelease: auto
+  
+  # Create draft release first
+  draft: false
+
+# Build hooks to handle header file
+hooks:
+  post:
+    # Copy header file after build
+    - cmd: cp {{ .Path }}.h {{ dir .Path }}/libxatu.h
+      output: false
+
+# Additional files to include in release
+extra_files:
+  - glob: ./libxatu.h
