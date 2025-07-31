@@ -33,7 +33,7 @@ linters:
     - godox
     - tparallel
     - errorlint
-    - godot
+    # - godot # https://github.com/tetafro/godot/issues/41
     - nestif
 
   disable:
@@ -42,115 +42,117 @@ linters:
     - nlreturn # too opinionated
     - wsl # too opinionated
 
-linters-settings:
-  dupl:
-    threshold: 150
-  
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - whyNoLint
-      - wrapperFunc
-  
-  gocyclo:
-    min-complexity: 15
-  
-  govet:
-    enable-all: true
-    # check-shadowing is deprecated and included in enable-all
-  
-  misspell:
-    locale: US
-  
-  nakedret:
-    max-func-lines: 30
-  
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: true
-  
-  revive:
-    ignore-generated-header: true
-    severity: warning
+  settings:
+    dupl:
+      threshold: 150
+    
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+      disabled-checks:
+        - whyNoLint
+        - wrapperFunc
+    
+    gocyclo:
+      min-complexity: 15
+    
+    govet:
+      enable-all: true
+      # check-shadowing is deprecated and included in enable-all
+      disable:
+        - fieldalignment # Field alignment is a performance optimization, not a correctness issue
+    
+    misspell:
+      locale: US
+    
+    nakedret:
+      max-func-lines: 30
+    
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: true
+    
+    revive:
+      severity: warning
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    
+    nestif:
+      min-complexity: 4
+    
+    godot:
+      scope: all
+      exclude:
+        - "^TODO:"
+        - "^FIXME:"
+        - "^NOTE:"
+
+  exclusions:
+    paths:
+      - vendor
+      - third_party
+      - testdata
+      - examples
+      - validation-specs
+      - ".*\\.pb\\.go$"
+      - ".*\\.gen\\.go$"
+    
     rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-  
-  nestif:
-    min-complexity: 4
-  
-  godot:
-    scope: all
-    exclude:
-      - "^TODO:"
-      - "^FIXME:"
-      - "^NOTE:"
+      # Exclude some linters from running on tests files
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - gosec
+          - goconst
+      
+      # Exclude gosec G404 (insecure random number source) for tests
+      - path: _test\.go
+        text: "G404"
+        linters:
+          - gosec
+      
+      # Allow dot imports for Ginkgo/Gomega in tests
+      - path: _test\.go
+        text: "dot-imports"
+        linters:
+          - revive
 
 issues:
-  exclude-dirs:
-    - vendor
-    - third_party
-    - testdata
-    - examples
-    - validation-specs
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    - ".*\\.gen\\.go$"
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - gosec
-        - goconst
-    
-    # Exclude gosec G404 (insecure random number source) for tests
-    - path: _test\.go
-      text: "G404"
-      linters:
-        - gosec
-    
-    # Allow dot imports for Ginkgo/Gomega in tests
-    - path: _test\.go
-      text: "dot-imports"
-      linters:
-        - revive
-  
   # Maximum issues count per one linter
   max-issues-per-linter: 0
   

@@ -11,12 +11,11 @@ import (
 
 // Summary is a struct that holds the summary of the processor.
 type Summary struct {
-	log           logrus.FieldLogger
-	printInterval time.Duration
-
 	eventStreamEvents sync.Map
 	eventsExported    atomic.Uint64
 	failedEvents      atomic.Uint64
+	printInterval     time.Duration
+	log               logrus.FieldLogger
 }
 
 // NewSummary creates a new summary with the given print interval.
@@ -94,7 +93,11 @@ func (s *Summary) GetFailedEvents() uint64 {
 func (s *Summary) AddEventStreamEvents(topic string, count uint64) {
 	current, _ := s.eventStreamEvents.LoadOrStore(topic, count)
 
-	s.eventStreamEvents.Store(topic, current.(uint64)+count)
+	val, ok := current.(uint64)
+	if !ok {
+		val = 0
+	}
+	s.eventStreamEvents.Store(topic, val+count)
 }
 
 // GetEventStreamEvents returns a map of all event topics and their counts.
@@ -102,7 +105,11 @@ func (s *Summary) GetEventStreamEvents() map[string]uint64 {
 	events := make(map[string]uint64)
 
 	s.eventStreamEvents.Range(func(key, value any) bool {
-		events[key.(string)], _ = value.(uint64)
+		if k, ok := key.(string); ok {
+			if v, ok := value.(uint64); ok {
+				events[k] = v
+			}
+		}
 
 		return true
 	})

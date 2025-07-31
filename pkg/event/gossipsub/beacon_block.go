@@ -20,29 +20,27 @@ import (
 
 // BeaconBlock represents a processed beacon block event from gossipsub.
 type BeaconBlock struct {
-	log logrus.FieldLogger
-
-	now time.Time
-
-	event          *RawBeaconBlock
-	clockDrift     time.Duration
-	wallclock      *ethwallclock.EthereumBeaconChain
 	duplicateCache *ttlcache.Cache[string, time.Time]
+	event          *RawBeaconBlock
+	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
+	log            logrus.FieldLogger
+	now            time.Time
 	id             uuid.UUID
+	clockDrift     time.Duration
 }
 
 // RawBeaconBlock represents the raw beacon block data received from gossipsub.
 type RawBeaconBlock struct {
-	PeerID        string `json:"peer_id"`
-	MessageID     string `json:"message_id"`
-	Topic         string `json:"topic"`
-	MessageSize   uint32 `json:"message_size"`
 	TimestampMs   int64  `json:"timestamp_ms"`
 	Slot          uint64 `json:"slot"`
 	Epoch         uint64 `json:"epoch"`
-	BlockRoot     string `json:"block_root"`
 	ProposerIndex uint64 `json:"proposer_index"`
+	MessageSize   uint32 `json:"message_size"`
+	PeerID        string `json:"peer_id"`
+	MessageID     string `json:"message_id"`
+	Topic         string `json:"topic"`
+	BlockRoot     string `json:"block_root"`
 }
 
 // NewBeaconBlock creates a new BeaconBlock instance from raw event data.

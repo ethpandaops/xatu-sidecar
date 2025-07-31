@@ -21,9 +21,6 @@ var (
 
 // Config represents the main configuration structure.
 type Config struct {
-	// The name of the processor
-	Name string `yaml:"name"`
-
 	// Outputs configuration
 	Outputs []output.Config `yaml:"outputs"`
 
@@ -32,6 +29,9 @@ type Config struct {
 
 	// Client metadata
 	Client Client `yaml:"client"`
+
+	// The name of the processor
+	Name string `yaml:"name"`
 
 	// NTP Server to use for clock drift correction
 	NTPServer string `yaml:"ntpServer" default:"time.google.com"`
@@ -45,10 +45,10 @@ type Network struct {
 
 // Ethereum contains Ethereum-specific configuration.
 type Ethereum struct {
+	Network        Network `yaml:"network"`
 	GenesisTime    uint64  `yaml:"genesis_time"`
 	SecondsPerSlot uint64  `yaml:"seconds_per_slot"`
 	SlotsPerEpoch  uint64  `yaml:"slots_per_epoch"`
-	Network        Network `yaml:"network"`
 }
 
 // Client represents the metadata for the client using the sidecar.
@@ -82,11 +82,7 @@ func (e *Ethereum) Validate() error {
 		return ErrSlotsPerEpochRequired
 	}
 
-	if err := e.Network.Validate(); err != nil {
-		return err
-	}
-
-	return nil
+	return e.Network.Validate()
 }
 
 // Validate checks the network configuration for errors.

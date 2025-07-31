@@ -33,23 +33,15 @@ var (
 
 // Handler processes blockchain events from the sidecar.
 type Handler struct {
-	Config *Config
-
-	sinks []output.Sink
-
-	clockDrift time.Duration
-
-	log logrus.FieldLogger
-
+	sinks          []output.Sink
+	Config         *Config
 	duplicateCache *cache.DuplicateCache
-
-	wallclock *ethwallclock.EthereumBeaconChain
-
-	id uuid.UUID
-
-	scheduler gocron.Scheduler
-
-	summary *Summary
+	wallclock      *ethwallclock.EthereumBeaconChain
+	summary        *Summary
+	log            logrus.FieldLogger
+	scheduler      gocron.Scheduler
+	id             uuid.UUID
+	clockDrift     time.Duration
 }
 
 // EventType represents the type of blockchain event.
@@ -138,6 +130,8 @@ func (h *Handler) Start(ctx context.Context) error {
 }
 
 // HandleRawEvent processes a raw event based on its type.
+//
+//nolint:gocyclo // This function handles multiple event types in a switch statement
 func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, eventType EventType) error {
 	clientMeta := h.createNewClientMeta(ctx)
 
