@@ -48,7 +48,7 @@ Initialize the library with configuration
 > **Note:** See [Configuration](#configuration) for the configuration format.
 
 ```c
-int32_t Init(const char* config_json);
+int32_t Init(const char* config_yaml);
 ```
 
 ### SendEventBatch
@@ -74,42 +74,32 @@ const char* GetStatus();
 
 ## Configuration
 
-The library accepts a JSON configuration with the following structure:
+The library accepts a YAML configuration with the following structure:
 
-```json
-{
-  "log_level": "info",
-  "xatu": {
-    "name": "my-beacon-node",
-    "outputs": [
-      {
-        "name": "mainnet",
-        "type": "xatu",
-        "config": {
-          "address": "localhost:8080",
-          "tls": false,
-          "maxQueueSize": 100000,
-          "batchTimeout": "5s",
-          "workers": 1
-        }
-      }
-    ],
-    "ethereum": {
-      "genesis_time": 1606824023,
-      "seconds_per_slot": 12,
-      "slots_per_epoch": 32,
-      "network": {
-        "name": "mainnet",
-        "id": 1
-      }
-    },
-    "client": {
-      "name": "my-beacon-node",
-      "version": "1.0.0"
-    },
-    "ntpServer": "time.google.com"
-  }
-}
+```yaml
+log_level: info
+xatu:
+  name: my-beacon-node
+  outputs:
+    - name: mainnet
+      type: xatu
+      config:
+        address: localhost:8080
+        tls: false
+        maxQueueSize: 100000
+        batchTimeout: 5s
+        workers: 1
+  ethereum:
+    genesis_time: 1606824023
+    seconds_per_slot: 12
+    slots_per_epoch: 32
+    network:
+      name: mainnet
+      id: 1
+  client:
+    name: my-beacon-node
+    version: 1.0.0
+  ntpServer: time.google.com
 ```
 
 ## Event Types
