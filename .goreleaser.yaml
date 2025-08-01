@@ -57,10 +57,7 @@ archives:
       {{- .Os }}_
       {{- .Arch }}
     
-    # Include only the built library and header file
-    files:
-      - src: libxatu.h
-        dst: libxatu.h
+    # Archive will include the built library and header file automatically
     
     # Platform-specific naming is handled in name_template
 
