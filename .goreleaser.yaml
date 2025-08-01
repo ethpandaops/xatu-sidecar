@@ -8,8 +8,6 @@
 #
 # To build for all platforms, install the required cross-compilers or use Docker
 
-version: 2
-
 project_name: xatu-sidecar
 
 before:
@@ -44,6 +42,7 @@ builds:
         env:
           - CC=aarch64-linux-gnu-gcc
           - CXX=aarch64-linux-gnu-g++
+          - CGO_ENABLED=1
 
   - id: xatu-sidecar-darwin
     main: .
@@ -69,11 +68,13 @@ builds:
         env:
           - CC=o64-clang
           - CXX=o64-clang++
+          - CGO_ENABLED=1
       - goos: darwin
         goarch: arm64
         env:
           - CC=oa64-clang
           - CXX=oa64-clang++
+          - CGO_ENABLED=1
 
   - id: xatu-sidecar-windows
     main: .
@@ -97,9 +98,10 @@ builds:
 
 archives:
   - id: shared-libs
-    formats:
-      - tar.gz
-      - zip
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
     
     # Archive name template
     name_template: >-
@@ -120,7 +122,7 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
