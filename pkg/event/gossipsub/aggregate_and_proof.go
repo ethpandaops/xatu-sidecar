@@ -20,38 +20,34 @@ import (
 
 // AggregateAndProof represents a processed aggregate and proof event from gossipsub.
 type AggregateAndProof struct {
-	log logrus.FieldLogger
-
-	now time.Time
-
-	event          *RawAggregateAndProof
-	clockDrift     time.Duration
-	wallclock      *ethwallclock.EthereumBeaconChain
 	duplicateCache *ttlcache.Cache[string, time.Time]
+	event          *RawAggregateAndProof
+	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
+	log            logrus.FieldLogger
+	now            time.Time
 	id             uuid.UUID
+	clockDrift     time.Duration
 }
 
 // RawAggregateAndProof represents the raw aggregate and proof data received from gossipsub.
 type RawAggregateAndProof struct {
-	PeerID              string `json:"peer_id"`
-	MessageID           string `json:"message_id"`
 	Slot                uint64 `json:"slot"`
 	Epoch               uint64 `json:"epoch"`
-	AttestationDataRoot string `json:"attestation_data_root"`
 	AggregatorIndex     uint64 `json:"aggregator_index"`
 	Timestamp           int64  `json:"timestamp"`
-	Topic               string `json:"topic"`
+	SourceEpoch         uint64 `json:"source_epoch"`
+	TargetEpoch         uint64 `json:"target_epoch"`
+	CommitteeIndex      uint64 `json:"committee_index"`
 	MessageSize         uint32 `json:"message_size"`
-	// Additional attestation data fields
-	SourceEpoch    uint64 `json:"source_epoch"`
-	SourceRoot     string `json:"source_root"`
-	TargetEpoch    uint64 `json:"target_epoch"`
-	TargetRoot     string `json:"target_root"`
-	CommitteeIndex uint64 `json:"committee_index"`
-	// Aggregation and signature fields
-	AggregationBits string `json:"aggregation_bits"`
-	Signature       string `json:"signature"`
+	PeerID              string `json:"peer_id"`
+	MessageID           string `json:"message_id"`
+	AttestationDataRoot string `json:"attestation_data_root"`
+	Topic               string `json:"topic"`
+	SourceRoot          string `json:"source_root"`
+	TargetRoot          string `json:"target_root"`
+	AggregationBits     string `json:"aggregation_bits"`
+	Signature           string `json:"signature"`
 }
 
 // NewAggregateAndProof creates a new AggregateAndProof instance from raw event data.

@@ -1,5 +1,12 @@
 # GoReleaser configuration for xatu-sidecar
 # This builds shared libraries for multiple platforms and architectures
+#
+# Note: Cross-compilation requires appropriate C compilers:
+# - Linux ARM64: aarch64-linux-gnu-gcc
+# - Darwin: o64-clang (amd64), oa64-clang (arm64)
+# - Windows: x86_64-w64-mingw32-gcc
+#
+# To build for all platforms, install the required cross-compilers or use Docker
 
 project_name: xatu-sidecar
 
@@ -9,71 +16,89 @@ before:
     - go generate ./...
 
 builds:
-  - id: xatu-sidecar
+  - id: xatu-sidecar-linux
     main: .
     binary: libxatu
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
     
-    # Build shared library
+    
     buildmode: c-shared
-    
-    # Enable CGO for FFI
     env:
       - CGO_ENABLED=1
-    
-    # Build flags
     flags:
       - -trimpath
-    
-    # Linker flags
     ldflags:
       - -s -w
       - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
       - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
       - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
-    
-    # Target platforms and architectures
-    goos:
-      - linux
-      - darwin
-      - windows
-    
-    goarch:
-      - amd64
-      - arm64
-    
-    # Platform/arch combinations to skip
-    ignore:
-      - goos: windows
-        goarch: arm64  # Windows ARM64 support is limited
-    
-    # Custom environment variables for cross-compilation
     overrides:
-      - goos: windows
-        goarch: amd64
-        env:
-          - CC=x86_64-w64-mingw32-gcc
-          - CXX=x86_64-w64-mingw32-g++
       - goos: linux
         goarch: arm64
         env:
           - CC=aarch64-linux-gnu-gcc
           - CXX=aarch64-linux-gnu-g++
-      - goos: darwin
-        goarch: arm64
-        env:
-          - CC=oa64-clang
-          - CXX=oa64-clang++
+          - CGO_ENABLED=1
+
+  - id: xatu-sidecar-darwin
+    main: .
+    binary: libxatu
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    buildmode: c-shared
+    env:
+      - CGO_ENABLED=1
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
+    overrides:
       - goos: darwin
         goarch: amd64
         env:
           - CC=o64-clang
           - CXX=o64-clang++
+          - CGO_ENABLED=1
+      - goos: darwin
+        goarch: arm64
+        env:
+          - CC=oa64-clang
+          - CXX=oa64-clang++
+          - CGO_ENABLED=1
+
+  - id: xatu-sidecar-windows
+    main: .
+    binary: libxatu
+    goos:
+      - windows
+    goarch:
+      - amd64
+    buildmode: c-shared
+    env:
+      - CGO_ENABLED=1
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
+      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
 
 archives:
   - id: shared-libs
     format: tar.gz
-    
-    # Use .zip for Windows
     format_overrides:
       - goos: windows
         format: zip
@@ -85,18 +110,12 @@ archives:
       {{- .Os }}_
       {{- .Arch }}
     
-    # Include the generated header file
+    # Include only the built library and header file
     files:
       - src: libxatu.h
         dst: libxatu.h
-        info:
-          mode: 0644
     
-    # Platform-specific file naming
-    replacements:
-      darwin: macos
-      amd64: x86_64
-      arm64: aarch64
+    # Platform-specific naming is handled in name_template
 
 checksum:
   name_template: 'checksums.txt'
@@ -168,13 +187,4 @@ release:
   # Create draft release first
   draft: false
 
-# Build hooks to handle header file
-hooks:
-  post:
-    # Copy header file after build
-    - cmd: cp {{ .Path }}.h {{ dir .Path }}/libxatu.h
-      output: false
-
-# Additional files to include in release
-extra_files:
-  - glob: ./libxatu.h
+# No additional configuration needed - header file is included in archives

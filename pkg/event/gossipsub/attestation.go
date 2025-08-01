@@ -20,41 +20,36 @@ import (
 
 // Attestation represents a processed attestation event from gossipsub.
 type Attestation struct {
-	log logrus.FieldLogger
-
-	now time.Time
-
-	event          *RawAttestation
-	clockDrift     time.Duration
-	wallclock      *ethwallclock.EthereumBeaconChain
 	duplicateCache *ttlcache.Cache[string, time.Time]
+	event          *RawAttestation
+	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
+	log            logrus.FieldLogger
+	now            time.Time
 	id             uuid.UUID
+	clockDrift     time.Duration
 }
 
 // RawAttestation represents the raw attestation data received from gossipsub.
 type RawAttestation struct {
-	PeerID              string `json:"peer_id"`
-	MessageID           string `json:"message_id"`
 	Slot                uint64 `json:"slot"`
 	Epoch               uint64 `json:"epoch"`
-	AttestationDataRoot string `json:"attestation_data_root"`
 	SubnetID            uint64 `json:"subnet_id"`
 	Timestamp           int64  `json:"timestamp"`
-	ShouldProcess       bool   `json:"should_process"`
-	Topic               string `json:"topic"`
+	SourceEpoch         uint64 `json:"source_epoch"`
+	TargetEpoch         uint64 `json:"target_epoch"`
+	CommitteeIndex      uint64 `json:"committee_index"`
+	AttesterIndex       uint64 `json:"attester_index"`
 	MessageSize         uint32 `json:"message_size"`
-	// Additional attestation data fields
-	SourceEpoch    uint64 `json:"source_epoch"`
-	SourceRoot     string `json:"source_root"`
-	TargetEpoch    uint64 `json:"target_epoch"`
-	TargetRoot     string `json:"target_root"`
-	CommitteeIndex uint64 `json:"committee_index"`
-	// Aggregation and signature fields
-	AggregationBits string `json:"aggregation_bits"`
-	Signature       string `json:"signature"`
-	// Validator specific fields
-	AttesterIndex uint64 `json:"attester_index"`
+	ShouldProcess       bool   `json:"should_process"`
+	PeerID              string `json:"peer_id"`
+	MessageID           string `json:"message_id"`
+	AttestationDataRoot string `json:"attestation_data_root"`
+	Topic               string `json:"topic"`
+	SourceRoot          string `json:"source_root"`
+	TargetRoot          string `json:"target_root"`
+	AggregationBits     string `json:"aggregation_bits"`
+	Signature           string `json:"signature"`
 }
 
 // NewAttestation creates a new Attestation instance from raw event data.

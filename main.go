@@ -4,11 +4,11 @@ package main
 /*
 #include <stdlib.h>
 */
-import "C"
+import "C" //nolint:gocritic // C is a special CGO import, not a duplicate of unsafe
 import (
 	"context"
 	"encoding/json"
-	"unsafe"
+	"unsafe" //nolint:gocritic // false positive - C and unsafe are different packages
 
 	"github.com/ethpandaops/xatu-sidecar/pkg/processor"
 	"github.com/sirupsen/logrus"
@@ -43,7 +43,8 @@ func Init(configJSON *byte) int32 {
 
 	var config *Config
 
-	if err := yaml.Unmarshal([]byte(goConfigData), &config); err != nil {
+	err := yaml.Unmarshal([]byte(goConfigData), &config)
+	if err != nil {
 		log.WithError(err).Error("Failed to parse configuration")
 		return -1
 	}
@@ -71,7 +72,6 @@ func Init(configJSON *byte) int32 {
 		config.Processor.NTPServer = "time.google.com"
 	}
 
-	var err error
 	handler, err = processor.NewHandler(context.Background(), log, config.Processor)
 	if err != nil {
 		log.WithError(err).Error("Failed to create processor handler")
@@ -79,7 +79,8 @@ func Init(configJSON *byte) int32 {
 		return -1
 	}
 
-	if err := handler.Start(context.Background()); err != nil {
+	err = handler.Start(context.Background())
+	if err != nil {
 		log.WithError(err).Error("Failed to start handler")
 		return -1
 	}
@@ -119,7 +120,8 @@ func SendEventBatch(events *byte) int32 {
 	}
 
 	var rawEvents []json.RawMessage
-	if err := json.Unmarshal([]byte(goEventsData), &rawEvents); err != nil {
+	err := json.Unmarshal([]byte(goEventsData), &rawEvents)
+	if err != nil {
 		log.WithError(err).WithField("json_length", jsonLen).Error("Failed to parse events array")
 
 		return -2
@@ -134,13 +136,14 @@ func SendEventBatch(events *byte) int32 {
 			EventType processor.EventType `json:"event_type"`
 		}
 
-		if err := json.Unmarshal(rawEvent, &eventTypeData); err != nil {
+		err := json.Unmarshal(rawEvent, &eventTypeData)
+		if err != nil {
 			log.WithError(err).WithField("event_index", i).Error("Failed to parse event type")
 
 			continue
 		}
 
-		err := handler.HandleRawEvent(context.Background(), rawEvent, eventTypeData.EventType)
+		err = handler.HandleRawEvent(context.Background(), rawEvent, eventTypeData.EventType)
 		if err != nil {
 			log.WithError(err).WithField("event_index", i).Error("Failed to handle event")
 

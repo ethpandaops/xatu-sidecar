@@ -20,32 +20,30 @@ import (
 
 // BlobSidecar represents a processed blob sidecar event from gossipsub.
 type BlobSidecar struct {
-	log logrus.FieldLogger
-
-	now time.Time
-
-	event          *RawBlobSidecar
-	clockDrift     time.Duration
-	wallclock      *ethwallclock.EthereumBeaconChain
 	duplicateCache *ttlcache.Cache[string, time.Time]
+	event          *RawBlobSidecar
+	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
+	log            logrus.FieldLogger
+	now            time.Time
 	id             uuid.UUID
+	clockDrift     time.Duration
 }
 
 // RawBlobSidecar represents the raw blob sidecar data received from gossipsub.
 type RawBlobSidecar struct {
-	PeerID        string  `json:"peer_id"`
-	MessageID     string  `json:"message_id"`
-	Topic         string  `json:"topic"`
-	MessageSize   uint32  `json:"message_size"`
 	TimestampMs   int64   `json:"timestamp_ms"`
 	Slot          uint64  `json:"slot"`
 	Epoch         uint64  `json:"epoch"`
+	ProposerIndex uint64  `json:"proposer_index"`
+	BlobIndex     uint64  `json:"blob_index"`
+	MessageSize   uint32  `json:"message_size"`
+	PeerID        string  `json:"peer_id"`
+	MessageID     string  `json:"message_id"`
+	Topic         string  `json:"topic"`
 	BlockRoot     string  `json:"block_root"`
 	ParentRoot    string  `json:"parent_root"`
 	StateRoot     string  `json:"state_root"`
-	ProposerIndex uint64  `json:"proposer_index"`
-	BlobIndex     uint64  `json:"blob_index"`
 	Client        *string `json:"client,omitempty"`
 }
 
