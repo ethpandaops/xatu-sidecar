@@ -16,6 +16,9 @@ coverage.txt
 profile.out
 profile.grind
 
+# goreleaser
+.goreleaser.yaml.new
+
 # Nodejs
 node_modules
 yarn-error.log
