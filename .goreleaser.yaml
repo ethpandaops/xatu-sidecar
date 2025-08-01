@@ -1,12 +1,10 @@
 # GoReleaser configuration for xatu-sidecar
-# This builds shared libraries for multiple platforms and architectures
+# This builds shared libraries for Linux platforms (amd64 and arm64)
 #
 # Note: Cross-compilation requires appropriate C compilers:
 # - Linux ARM64: aarch64-linux-gnu-gcc
-# - Darwin: o64-clang (amd64), oa64-clang (arm64)
-# - Windows: x86_64-w64-mingw32-gcc
 #
-# To build for all platforms, install the required cross-compilers or use Docker
+# To build for all architectures, install the required cross-compiler or use Docker
 
 project_name: xatu-sidecar
 
@@ -44,57 +42,6 @@ builds:
           - CXX=aarch64-linux-gnu-g++
           - CGO_ENABLED=1
 
-  - id: xatu-sidecar-darwin
-    main: .
-    binary: libxatu
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    buildmode: c-shared
-    env:
-      - CGO_ENABLED=1
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
-    overrides:
-      - goos: darwin
-        goarch: amd64
-        env:
-          - CC=o64-clang
-          - CXX=o64-clang++
-          - CGO_ENABLED=1
-      - goos: darwin
-        goarch: arm64
-        env:
-          - CC=oa64-clang
-          - CXX=oa64-clang++
-          - CGO_ENABLED=1
-
-  - id: xatu-sidecar-windows
-    main: .
-    binary: libxatu
-    goos:
-      - windows
-    goarch:
-      - amd64
-    buildmode: c-shared
-    env:
-      - CGO_ENABLED=1
-      - CC=x86_64-w64-mingw32-gcc
-      - CXX=x86_64-w64-mingw32-g++
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.version={{.Version}}
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.commit={{.Commit}}
-      - -X github.com/ethpandaops/xatu-sidecar/pkg/version.date={{.Date}}
 
 archives:
   - id: shared-libs
@@ -159,14 +106,13 @@ release:
   header: |
     ## xatu-sidecar v{{ .Version }}
     
-    Embeddable beacon chain event streaming library for Ethereum consensus clients.
+    Embeddable beacon chain event streaming library for Ethereum consensus clients (Linux only).
     
     ### Installation
     
     Download the appropriate shared library for your platform and architecture:
-    - Linux: `libxatu.so`
-    - macOS: `libxatu.dylib`
-    - Windows: `libxatu.dll`
+    - Linux AMD64: `libxatu.so`
+    - Linux ARM64: `libxatu.so`
     
     Include the `libxatu.h` header file in your project.
   

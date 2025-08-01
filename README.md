@@ -1,6 +1,6 @@
 # xatu-sidecar
 
-Embeddable beacon chain event streaming library for Ethereum consensus clients.
+Embeddable beacon chain event streaming library for Ethereum consensus clients (Linux only).
 
 ## Features
 
@@ -14,7 +14,7 @@ Embeddable beacon chain event streaming library for Ethereum consensus clients.
 
 A lightweight Go library for streaming Ethereum beacon chain events from consensus clients to external observability systems. 
 
-- FFI-compatible shared library for embedding in Ethereum clients
+- FFI-compatible shared library for embedding in Ethereum clients (Linux only)
 - Batched event processing for efficient data transmission
 - Support for all major beacon chain gossipsub events
 - Compatible with Xatu data collection infrastructure
@@ -34,7 +34,7 @@ make clean
 make
 ```
 
-This will generate `libxatu.so` (Linux), `libxatu.dylib` (macOS), or `libxatu.dll` (Windows).
+This will generate `libxatu.so` for Linux (amd64 and arm64 architectures).
 
 ## Integration Examples
 
