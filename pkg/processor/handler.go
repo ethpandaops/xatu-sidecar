@@ -166,7 +166,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		attestation := gossipsub.NewAttestation(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
+		attestation := gossipsub.NewAttestation(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubAttestation, clientMeta)
 
 		ignore, err := attestation.ShouldIgnore(ctx)
 		if err != nil {
@@ -190,7 +190,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		aggregateAndProof := gossipsub.NewAggregateAndProof(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
+		aggregateAndProof := gossipsub.NewAggregateAndProof(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubAggregateAndProof, clientMeta)
 
 		ignore, err := aggregateAndProof.ShouldIgnore(ctx)
 		if err != nil {
@@ -214,7 +214,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		blobSidecar := gossipsub.NewBlobSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
+		blobSidecar := gossipsub.NewBlobSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBlobSidecar, clientMeta)
 
 		ignore, err := blobSidecar.ShouldIgnore(ctx)
 		if err != nil {
@@ -233,8 +233,28 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
 
 	case EventTypeDataColumnSidecar:
-		// Data column sidecars are not yet implemented
-		return ErrUnsupportedEventType
+		var eventData gossipsub.RawDataColumnSidecar
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		dataColumnSidecar := gossipsub.NewDataColumnSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
+
+		ignore, err := dataColumnSidecar.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := dataColumnSidecar.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
 
 	default:
 		return ErrUnsupportedEventType

@@ -98,14 +98,6 @@ processor:
   ntpServer: time.google.com
 ```
 
-## Event Types
-
-- `BEACON_BLOCK`: Propagated beacon blocks
-- `ATTESTATION`: Individual attestations
-- `AGGREGATE_AND_PROOF`: Aggregated attestations
-- `BLOB_SIDECAR`: Blob data for EIP-4844
-- `DATA_COLUMN_SIDECAR`: Data availability sampling columns (not yet implemented)
-
 ## FFI Event Payloads
 
 When sending events via the `SendEventBatch` function, events must be sent as a JSON array. Each event in the array must include an `event_type` field matching one of the EventType constants, along with the event-specific fields.
@@ -117,7 +109,7 @@ The `event_type` field must be one of the following string values:
 - `"ATTESTATION"` - Individual attestations  
 - `"AGGREGATE_AND_PROOF"` - Aggregated attestations
 - `"BLOB_SIDECAR"` - Blob data for EIP-4844
-- `"DATA_COLUMN_SIDECAR"` - Data availability sampling columns (not yet implemented)
+- `"DATA_COLUMN_SIDECAR"` - Data availability sampling columns
 
 ### BEACON_BLOCK Payload
 ```json
@@ -205,7 +197,26 @@ The `event_type` field must be one of the following string values:
 
 ### DATA_COLUMN_SIDECAR Payload
 
-**TBD**
+### BLOB_SIDECAR Payload
+```json
+{
+    "event_type": "BLOB_SIDECAR",
+    "peer_id": "16Uiu2HAm...",
+    "message_id": "msg_12345",
+    "topic": "/eth2/abc123/blob_sidecar_0/ssz_snappy",
+    "message_size": 131072,
+    "timestamp_ms": 1234567890123,
+    "slot": 1234567,
+    "epoch": 38576,
+    "block_root": "0x1234567890abcdef...",
+    "parent_root": "0xabcdef1234567890...",
+    "state_root": "0xfedcba0987654321...",
+    "proposer_index": 12345,
+    "column_index": 0,
+    "kzg_commitments_count": 5,
+    "client": "lighthouse/v4.5.0"
+}
+```
 
 ### Example Batch Request
 ```json
