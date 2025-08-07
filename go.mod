@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/beevik/ntp v1.4.3
 	github.com/ethpandaops/ethwallclock v0.4.0
-	github.com/ethpandaops/xatu v1.3.3
+	github.com/ethpandaops/xatu v1.3.4
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/google/uuid v1.6.0
 	github.com/jellydator/ttlcache/v3 v3.4.0
