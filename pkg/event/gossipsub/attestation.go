@@ -35,7 +35,7 @@ type RawAttestation struct {
 	Slot                uint64 `json:"slot"`
 	Epoch               uint64 `json:"epoch"`
 	SubnetID            uint64 `json:"subnet_id"`
-	Timestamp           int64  `json:"timestamp"`
+	TimestampMs         int64  `json:"timestamp_ms"`
 	SourceEpoch         uint64 `json:"source_epoch"`
 	TargetEpoch         uint64 `json:"target_epoch"`
 	CommitteeIndex      uint64 `json:"committee_index"`
@@ -56,7 +56,7 @@ type RawAttestation struct {
 func NewAttestation(log logrus.FieldLogger, event *RawAttestation, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *Attestation {
 	return &Attestation{
 		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_BEACON_ATTESTATION"),
-		now:            time.UnixMilli(event.Timestamp),
+		now:            time.UnixMilli(event.TimestampMs),
 		event:          event,
 		clockDrift:     clockDrift,
 		wallclock:      wallclock,
@@ -68,7 +68,7 @@ func NewAttestation(log logrus.FieldLogger, event *RawAttestation, clockDrift ti
 
 // Decorate enriches the attestation event with additional metadata and returns a decorated event.
 func (e *Attestation) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
-	timestamp := time.UnixMilli(e.event.Timestamp).Add(e.clockDrift)
+	timestamp := time.UnixMilli(e.event.TimestampMs).Add(e.clockDrift)
 
 	// Create a basic attestation structure
 	attestation := &v1.Attestation{
@@ -101,7 +101,7 @@ func (e *Attestation) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error
 		},
 	}
 
-	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.Timestamp))
+	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.TimestampMs))
 	if err != nil {
 		e.log.WithError(err).Error("Failed to get extra attestation data")
 	} else {
