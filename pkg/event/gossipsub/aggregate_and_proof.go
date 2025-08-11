@@ -35,7 +35,7 @@ type RawAggregateAndProof struct {
 	Slot                uint64 `json:"slot"`
 	Epoch               uint64 `json:"epoch"`
 	AggregatorIndex     uint64 `json:"aggregator_index"`
-	Timestamp           int64  `json:"timestamp"`
+	TimestampMs         int64  `json:"timestamp_ms"`
 	SourceEpoch         uint64 `json:"source_epoch"`
 	TargetEpoch         uint64 `json:"target_epoch"`
 	CommitteeIndex      uint64 `json:"committee_index"`
@@ -54,7 +54,7 @@ type RawAggregateAndProof struct {
 func NewAggregateAndProof(log logrus.FieldLogger, event *RawAggregateAndProof, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *AggregateAndProof {
 	return &AggregateAndProof{
 		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_AGGREGATE_AND_PROOF"),
-		now:            time.UnixMilli(event.Timestamp),
+		now:            time.UnixMilli(event.TimestampMs),
 		event:          event,
 		clockDrift:     clockDrift,
 		wallclock:      wallclock,
@@ -66,7 +66,7 @@ func NewAggregateAndProof(log logrus.FieldLogger, event *RawAggregateAndProof, c
 
 // Decorate enriches the aggregate and proof event with additional metadata and returns a decorated event.
 func (e *AggregateAndProof) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
-	timestamp := time.UnixMilli(e.event.Timestamp).Add(e.clockDrift)
+	timestamp := time.UnixMilli(e.event.TimestampMs).Add(e.clockDrift)
 
 	// Create the aggregate and proof message
 	aggregateAndProof := &v1.SignedAggregateAttestationAndProofV2{
@@ -106,7 +106,7 @@ func (e *AggregateAndProof) Decorate(ctx context.Context) (*xatu.DecoratedEvent,
 		},
 	}
 
-	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.Timestamp))
+	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.TimestampMs))
 	if err != nil {
 		e.log.WithError(err).Error("Failed to get extra aggregate and proof data")
 	} else {
