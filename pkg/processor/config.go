@@ -49,6 +49,7 @@ type Ethereum struct {
 	GenesisTime    uint64  `yaml:"genesis_time"`
 	SecondsPerSlot uint64  `yaml:"seconds_per_slot"`
 	SlotsPerEpoch  uint64  `yaml:"slots_per_epoch"`
+	Implementation string  `yaml:"implementation" default:"unknown"`
 }
 
 // Client represents the metadata for the client using the sidecar.

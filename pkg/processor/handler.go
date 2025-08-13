@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	//nolint:gosec // only exposed if pprofAddr config is set
 	_ "net/http/pprof"
@@ -266,7 +267,7 @@ func (h *Handler) createNewClientMeta(_ context.Context) *xatu.ClientMeta {
 		Name:           h.Config.Name,
 		Version:        version.Short(),
 		Id:             h.id.String(),
-		Implementation: "Xatu Sidecar",
+		Implementation: fmt.Sprintf("Xatu Sidecar (%s)", h.Config.Ethereum.Implementation),
 		ModuleName:     xatu.ModuleName_SIDECAR,
 		Os:             runtime.GOOS,
 		ClockDrift:     uint64(h.clockDrift.Milliseconds()), //nolint:gosec // milliseconds won't overflow

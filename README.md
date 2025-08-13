@@ -24,7 +24,7 @@ A lightweight Go library for streaming Ethereum beacon chain events from consens
 
 1. Import as shared library
 2. Initialize with configuration
-3. Send events via FFI
+3. Send events via FFI/NFI
 4. Library handles batching, compression, and delivery
 
 ## Building
@@ -40,7 +40,7 @@ This will generate `libxatu.so` for Linux (amd64 and arm64 architectures).
 
 - [Lighthouse](https://github.com/ethpandaops/dimhouse)
 
-## FFI Functions
+## Functions
 
 ### Init
 Initialize the library with configuration
@@ -86,6 +86,7 @@ processor:
     - name: standard-out
       type: stdout
   ethereum:
+    implementation: lighthouse
     genesis_time: 1606824023
     seconds_per_slot: 12
     slots_per_epoch: 32
