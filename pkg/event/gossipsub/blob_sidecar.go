@@ -81,6 +81,7 @@ func (e *BlobSidecar) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error
 				ProposerIndex: &wrapperspb.UInt64Value{Value: e.event.ProposerIndex},
 				ParentRoot:    wrapperspb.String(e.event.ParentRoot),
 				StateRoot:     wrapperspb.String(e.event.StateRoot),
+				BlockRoot:     wrapperspb.String(e.event.BlockRoot),
 			},
 		},
 	}
