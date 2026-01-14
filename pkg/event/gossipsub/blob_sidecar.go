@@ -126,10 +126,12 @@ func (e *BlobSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 	}
 
 	// ignore blobs that are more than 16 slots old
-	slotLimit := currentSlot.Number() - 16
-
-	if e.event.Slot < slotLimit {
-		return true, nil
+	// Guard against unsigned underflow when chain is young (slot < 16)
+	if currentSlot.Number() >= 16 {
+		slotLimit := currentSlot.Number() - 16
+		if e.event.Slot < slotLimit {
+			return true, nil
+		}
 	}
 
 	return false, nil
