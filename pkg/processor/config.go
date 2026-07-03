@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethpandaops/xatu/pkg/observability"
 	"github.com/ethpandaops/xatu/pkg/output"
 	"github.com/ethpandaops/xatu/pkg/processor"
-	"github.com/sirupsen/logrus"
 )
 
 // Define static errors for validation.
@@ -60,9 +60,9 @@ type Client struct {
 
 // Validate checks the configuration for errors.
 func (c *Config) Validate() error {
-	for _, output := range c.Outputs {
-		if err := output.Validate(); err != nil {
-			return fmt.Errorf("output %s: %w", output.Name, err)
+	for i := range c.Outputs {
+		if err := c.Outputs[i].Validate(); err != nil {
+			return fmt.Errorf("output %s: %w", c.Outputs[i].Name, err)
 		}
 	}
 
@@ -100,10 +100,11 @@ func (n *Network) Validate() error {
 }
 
 // CreateSinks creates output sinks from the configuration.
-func (c *Config) CreateSinks(log logrus.FieldLogger) ([]output.Sink, error) {
+func (c *Config) CreateSinks(log observability.ContextualLogger) ([]output.Sink, error) {
 	sinks := make([]output.Sink, len(c.Outputs))
 
-	for i, out := range c.Outputs {
+	for i := range c.Outputs {
+		out := &c.Outputs[i]
 		if out.ShippingMethod == nil {
 			shippingMethod := processor.ShippingMethodAsync
 			out.ShippingMethod = &shippingMethod
@@ -113,7 +114,7 @@ func (c *Config) CreateSinks(log logrus.FieldLogger) ([]output.Sink, error) {
 			out.SinkType,
 			out.Config,
 			log,
-			out.FilterConfig,
+			&out.FilterConfig,
 			*out.ShippingMethod,
 		)
 		if err != nil {

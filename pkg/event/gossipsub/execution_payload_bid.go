@@ -1,4 +1,3 @@
-// Package gossipsub provides Ethereum beacon chain event processing for gossipsub messages.
 package gossipsub
 
 import (
@@ -18,10 +17,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// DataColumnSidecar represents a processed blob sidecar event from gossipsub.
-type DataColumnSidecar struct {
+// ExecutionPayloadBid represents a processed ePBS execution_payload_bid event from gossipsub.
+type ExecutionPayloadBid struct {
 	duplicateCache *ttlcache.Cache[string, time.Time]
-	event          *RawDataColumnSidecar
+	event          *RawExecutionPayloadBid
 	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
 	log            logrus.FieldLogger
@@ -30,28 +29,29 @@ type DataColumnSidecar struct {
 	clockDrift     time.Duration
 }
 
-// RawDataColumnSidecar represents the raw blob sidecar data received from gossipsub.
-type RawDataColumnSidecar struct {
-	TimestampMs         int64   `json:"timestamp_ms"`
-	Slot                uint64  `json:"slot"`
-	Epoch               uint64  `json:"epoch"`
-	ProposerIndex       uint64  `json:"proposer_index"`
-	ColumnIndex         uint64  `json:"column_index"`
-	KzgCommitmentsCount uint32  `json:"kzg_commitments_count"`
-	MessageSize         uint32  `json:"message_size"`
-	PeerID              string  `json:"peer_id"`
-	MessageID           string  `json:"message_id"`
-	Topic               string  `json:"topic"`
-	BlockRoot           string  `json:"block_root"`
-	ParentRoot          string  `json:"parent_root"`
-	StateRoot           string  `json:"state_root"`
-	Client              *string `json:"client,omitempty"`
+// RawExecutionPayloadBid represents the raw execution payload bid data received from gossipsub.
+type RawExecutionPayloadBid struct {
+	TimestampMs            int64  `json:"timestamp_ms"`
+	Slot                   uint64 `json:"slot"`
+	Epoch                  uint64 `json:"epoch"`
+	BuilderIndex           uint64 `json:"builder_index"`
+	Value                  uint64 `json:"value"`
+	ExecutionPayment       uint64 `json:"execution_payment"`
+	GasLimit               uint64 `json:"gas_limit"`
+	BlobKzgCommitmentCount uint32 `json:"blob_kzg_commitment_count"`
+	MessageSize            uint32 `json:"message_size"`
+	PeerID                 string `json:"peer_id"`
+	MessageID              string `json:"message_id"`
+	Topic                  string `json:"topic"`
+	BlockHash              string `json:"block_hash"`
+	ParentBlockHash        string `json:"parent_block_hash"`
+	FeeRecipient           string `json:"fee_recipient"`
 }
 
-// NewDataColumnSidecar creates a new DataColumnSidecar instance from raw event data.
-func NewDataColumnSidecar(log logrus.FieldLogger, event *RawDataColumnSidecar, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *DataColumnSidecar {
-	return &DataColumnSidecar{
-		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_DATA_COLUMN_SIDECAR"),
+// NewExecutionPayloadBid creates a new ExecutionPayloadBid instance from raw event data.
+func NewExecutionPayloadBid(log logrus.FieldLogger, event *RawExecutionPayloadBid, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *ExecutionPayloadBid {
+	return &ExecutionPayloadBid{
+		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_EXECUTION_PAYLOAD_BID"),
 		now:            time.UnixMilli(event.TimestampMs),
 		event:          event,
 		clockDrift:     clockDrift,
@@ -62,46 +62,48 @@ func NewDataColumnSidecar(log logrus.FieldLogger, event *RawDataColumnSidecar, c
 	}
 }
 
-// Decorate enriches the blob sidecar event with additional metadata and returns a decorated event.
-func (e *DataColumnSidecar) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
+// Decorate enriches the execution payload bid event with additional metadata and returns a decorated event.
+func (e *ExecutionPayloadBid) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
 	timestamp := time.UnixMilli(e.event.TimestampMs).Add(e.clockDrift)
 
 	decoratedEvent := &xatu.DecoratedEvent{
 		Event: &xatu.Event{
-			Name:     xatu.Event_LIBP2P_TRACE_GOSSIPSUB_DATA_COLUMN_SIDECAR,
+			Name:     xatu.Event_LIBP2P_TRACE_GOSSIPSUB_EXECUTION_PAYLOAD_BID,
 			DateTime: timestamppb.New(timestamp),
 			Id:       e.id.String(),
 		},
 		Meta: &xatu.Meta{
 			Client: e.clientMeta,
 		},
-		Data: &xatu.DecoratedEvent_Libp2PTraceGossipsubDataColumnSidecar{
-			Libp2PTraceGossipsubDataColumnSidecar: &gossipsub.DataColumnSidecar{
-				Slot:                &wrapperspb.UInt64Value{Value: e.event.Slot},
-				Index:               &wrapperspb.UInt64Value{Value: e.event.ColumnIndex},
-				KzgCommitmentsCount: &wrapperspb.UInt32Value{Value: e.event.KzgCommitmentsCount},
-				ProposerIndex:       &wrapperspb.UInt64Value{Value: e.event.ProposerIndex},
-				ParentRoot:          wrapperspb.String(e.event.ParentRoot),
-				StateRoot:           wrapperspb.String(e.event.StateRoot),
-				BlockRoot:           wrapperspb.String(e.event.BlockRoot),
+		Data: &xatu.DecoratedEvent_Libp2PTraceGossipsubExecutionPayloadBid{
+			Libp2PTraceGossipsubExecutionPayloadBid: &gossipsub.ExecutionPayloadBid{
+				Slot:                   &wrapperspb.UInt64Value{Value: e.event.Slot},
+				BuilderIndex:           &wrapperspb.UInt64Value{Value: e.event.BuilderIndex},
+				BlockHash:              wrapperspb.String(e.event.BlockHash),
+				ParentBlockHash:        wrapperspb.String(e.event.ParentBlockHash),
+				Value:                  &wrapperspb.UInt64Value{Value: e.event.Value},
+				ExecutionPayment:       &wrapperspb.UInt64Value{Value: e.event.ExecutionPayment},
+				FeeRecipient:           wrapperspb.String(e.event.FeeRecipient),
+				GasLimit:               &wrapperspb.UInt64Value{Value: e.event.GasLimit},
+				BlobKzgCommitmentCount: &wrapperspb.UInt32Value{Value: e.event.BlobKzgCommitmentCount},
 			},
 		},
 	}
 
 	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.TimestampMs))
 	if err != nil {
-		e.log.WithError(err).Error("Failed to get extra blob sidecar data")
+		e.log.WithError(err).Error("Failed to get extra execution payload bid data")
 	} else {
-		decoratedEvent.Meta.Client.AdditionalData = &xatu.ClientMeta_Libp2PTraceGossipsubDataColumnSidecar{
-			Libp2PTraceGossipsubDataColumnSidecar: additionalData,
+		decoratedEvent.Meta.Client.AdditionalData = &xatu.ClientMeta_Libp2PTraceGossipsubExecutionPayloadBid{
+			Libp2PTraceGossipsubExecutionPayloadBid: additionalData,
 		}
 	}
 
 	return decoratedEvent, nil
 }
 
-// ShouldIgnore determines if the blob sidecar event should be ignored based on deduplication and age.
-func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
+// ShouldIgnore determines if the execution payload bid event should be ignored based on deduplication and age.
+func (e *ExecutionPayloadBid) ShouldIgnore(_ context.Context) (bool, error) {
 	if e.event == nil {
 		return true, nil
 	}
@@ -117,9 +119,8 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-			"column_index":             e.event.ColumnIndex,
-			"kzg_commitments_count":    e.event.KzgCommitmentsCount,
-		}).Debug("Duplicate data column sidecar event received")
+			"builder_index":            e.event.BuilderIndex,
+		}).Debug("Duplicate execution payload bid event received")
 
 		return true, nil
 	}
@@ -129,7 +130,7 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 		return true, err
 	}
 
-	// ignore data columns that are more than 16 slots old
+	// ignore bids that are more than 16 slots old
 	// Guard against unsigned underflow when chain is young (slot < 16)
 	if currentSlot.Number() >= 16 {
 		slotLimit := currentSlot.Number() - 16
@@ -141,13 +142,13 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 	return false, nil
 }
 
-func (e *DataColumnSidecar) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubDataColumnSidecarData, error) {
+func (e *ExecutionPayloadBid) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubExecutionPayloadBidData, error) {
 	wallclockSlot, wallclockEpoch, err := e.wallclock.FromTime(timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallclock time: %w", err)
 	}
 
-	extra := &xatu.ClientMeta_AdditionalLibP2PTraceGossipSubDataColumnSidecarData{
+	extra := &xatu.ClientMeta_AdditionalLibP2PTraceGossipSubExecutionPayloadBidData{
 		WallclockSlot: &xatu.SlotV2{
 			Number:        &wrapperspb.UInt64Value{Value: wallclockSlot.Number()},
 			StartDateTime: timestamppb.New(wallclockSlot.TimeWindow().Start()),

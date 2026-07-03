@@ -9,11 +9,15 @@ import (
 
 // DuplicateCache manages TTL-based caches for deduplicating various event types.
 type DuplicateCache struct {
-	GossipsubBeaconBlock       *ttlcache.Cache[string, time.Time]
-	GossipsubAggregateAndProof *ttlcache.Cache[string, time.Time]
-	GossipsubAttestation       *ttlcache.Cache[string, time.Time]
-	GossipsubBlobSidecar       *ttlcache.Cache[string, time.Time]
-	GossipsubDataColumnSidecar *ttlcache.Cache[string, time.Time]
+	GossipsubBeaconBlock               *ttlcache.Cache[string, time.Time]
+	GossipsubAggregateAndProof         *ttlcache.Cache[string, time.Time]
+	GossipsubAttestation               *ttlcache.Cache[string, time.Time]
+	GossipsubBlobSidecar               *ttlcache.Cache[string, time.Time]
+	GossipsubDataColumnSidecar         *ttlcache.Cache[string, time.Time]
+	GossipsubExecutionPayloadEnvelope  *ttlcache.Cache[string, time.Time]
+	GossipsubExecutionPayloadBid       *ttlcache.Cache[string, time.Time]
+	GossipsubPayloadAttestationMessage *ttlcache.Cache[string, time.Time]
+	GossipsubProposerPreferences       *ttlcache.Cache[string, time.Time]
 }
 
 const (
@@ -39,6 +43,18 @@ func NewDuplicateCache() *DuplicateCache {
 		GossipsubDataColumnSidecar: ttlcache.New(
 			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
 		),
+		GossipsubExecutionPayloadEnvelope: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
+		GossipsubExecutionPayloadBid: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
+		GossipsubPayloadAttestationMessage: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
+		GossipsubProposerPreferences: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
 	}
 }
 
@@ -49,4 +65,8 @@ func (d *DuplicateCache) Start() {
 	go d.GossipsubAttestation.Start()
 	go d.GossipsubBlobSidecar.Start()
 	go d.GossipsubDataColumnSidecar.Start()
+	go d.GossipsubExecutionPayloadEnvelope.Start()
+	go d.GossipsubExecutionPayloadBid.Start()
+	go d.GossipsubPayloadAttestationMessage.Start()
+	go d.GossipsubProposerPreferences.Start()
 }
