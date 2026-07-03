@@ -1,4 +1,3 @@
-// Package gossipsub provides Ethereum beacon chain event processing for gossipsub messages.
 package gossipsub
 
 import (
@@ -18,10 +17,12 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// DataColumnSidecar represents a processed blob sidecar event from gossipsub.
-type DataColumnSidecar struct {
+// DataColumnSidecarGloas represents a processed Gloas-shaped data column sidecar event from gossipsub.
+// Gloas sidecars drop the signed block header (and with it proposer index, parent/state roots and
+// the KZG commitment list) and instead carry slot + beacon block root directly.
+type DataColumnSidecarGloas struct {
 	duplicateCache *ttlcache.Cache[string, time.Time]
-	event          *RawDataColumnSidecar
+	event          *RawDataColumnSidecarGloas
 	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
 	log            logrus.FieldLogger
@@ -30,27 +31,23 @@ type DataColumnSidecar struct {
 	clockDrift     time.Duration
 }
 
-// RawDataColumnSidecar represents the raw blob sidecar data received from gossipsub.
-type RawDataColumnSidecar struct {
-	TimestampMs         int64   `json:"timestamp_ms"`
-	Slot                uint64  `json:"slot"`
-	Epoch               uint64  `json:"epoch"`
-	ProposerIndex       uint64  `json:"proposer_index"`
-	ColumnIndex         uint64  `json:"column_index"`
-	KzgCommitmentsCount uint32  `json:"kzg_commitments_count"`
-	MessageSize         uint32  `json:"message_size"`
-	PeerID              string  `json:"peer_id"`
-	MessageID           string  `json:"message_id"`
-	Topic               string  `json:"topic"`
-	BlockRoot           string  `json:"block_root"`
-	ParentRoot          string  `json:"parent_root"`
-	StateRoot           string  `json:"state_root"`
-	Client              *string `json:"client,omitempty"`
+// RawDataColumnSidecarGloas represents the raw Gloas data column sidecar data received from gossipsub.
+type RawDataColumnSidecarGloas struct {
+	TimestampMs int64   `json:"timestamp_ms"`
+	Slot        uint64  `json:"slot"`
+	Epoch       uint64  `json:"epoch"`
+	ColumnIndex uint64  `json:"column_index"`
+	MessageSize uint32  `json:"message_size"`
+	PeerID      string  `json:"peer_id"`
+	MessageID   string  `json:"message_id"`
+	Topic       string  `json:"topic"`
+	BlockRoot   string  `json:"block_root"`
+	Client      *string `json:"client,omitempty"`
 }
 
-// NewDataColumnSidecar creates a new DataColumnSidecar instance from raw event data.
-func NewDataColumnSidecar(log logrus.FieldLogger, event *RawDataColumnSidecar, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *DataColumnSidecar {
-	return &DataColumnSidecar{
+// NewDataColumnSidecarGloas creates a new DataColumnSidecarGloas instance from raw event data.
+func NewDataColumnSidecarGloas(log logrus.FieldLogger, event *RawDataColumnSidecarGloas, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *DataColumnSidecarGloas {
+	return &DataColumnSidecarGloas{
 		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_DATA_COLUMN_SIDECAR"),
 		now:            time.UnixMilli(event.TimestampMs),
 		event:          event,
@@ -62,8 +59,8 @@ func NewDataColumnSidecar(log logrus.FieldLogger, event *RawDataColumnSidecar, c
 	}
 }
 
-// Decorate enriches the blob sidecar event with additional metadata and returns a decorated event.
-func (e *DataColumnSidecar) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
+// Decorate enriches the Gloas data column sidecar event with additional metadata and returns a decorated event.
+func (e *DataColumnSidecarGloas) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
 	timestamp := time.UnixMilli(e.event.TimestampMs).Add(e.clockDrift)
 
 	decoratedEvent := &xatu.DecoratedEvent{
@@ -77,20 +74,16 @@ func (e *DataColumnSidecar) Decorate(ctx context.Context) (*xatu.DecoratedEvent,
 		},
 		Data: &xatu.DecoratedEvent_Libp2PTraceGossipsubDataColumnSidecar{
 			Libp2PTraceGossipsubDataColumnSidecar: &gossipsub.DataColumnSidecar{
-				Slot:                &wrapperspb.UInt64Value{Value: e.event.Slot},
-				Index:               &wrapperspb.UInt64Value{Value: e.event.ColumnIndex},
-				KzgCommitmentsCount: &wrapperspb.UInt32Value{Value: e.event.KzgCommitmentsCount},
-				ProposerIndex:       &wrapperspb.UInt64Value{Value: e.event.ProposerIndex},
-				ParentRoot:          wrapperspb.String(e.event.ParentRoot),
-				StateRoot:           wrapperspb.String(e.event.StateRoot),
-				BlockRoot:           wrapperspb.String(e.event.BlockRoot),
+				Slot:      &wrapperspb.UInt64Value{Value: e.event.Slot},
+				Index:     &wrapperspb.UInt64Value{Value: e.event.ColumnIndex},
+				BlockRoot: wrapperspb.String(e.event.BlockRoot),
 			},
 		},
 	}
 
 	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.TimestampMs))
 	if err != nil {
-		e.log.WithError(err).Error("Failed to get extra blob sidecar data")
+		e.log.WithError(err).Error("Failed to get extra gloas data column sidecar data")
 	} else {
 		decoratedEvent.Meta.Client.AdditionalData = &xatu.ClientMeta_Libp2PTraceGossipsubDataColumnSidecar{
 			Libp2PTraceGossipsubDataColumnSidecar: additionalData,
@@ -100,8 +93,8 @@ func (e *DataColumnSidecar) Decorate(ctx context.Context) (*xatu.DecoratedEvent,
 	return decoratedEvent, nil
 }
 
-// ShouldIgnore determines if the blob sidecar event should be ignored based on deduplication and age.
-func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
+// ShouldIgnore determines if the Gloas data column sidecar event should be ignored based on deduplication and age.
+func (e *DataColumnSidecarGloas) ShouldIgnore(_ context.Context) (bool, error) {
 	if e.event == nil {
 		return true, nil
 	}
@@ -118,8 +111,7 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
 			"column_index":             e.event.ColumnIndex,
-			"kzg_commitments_count":    e.event.KzgCommitmentsCount,
-		}).Debug("Duplicate data column sidecar event received")
+		}).Debug("Duplicate gloas data column sidecar event received")
 
 		return true, nil
 	}
@@ -141,7 +133,7 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 	return false, nil
 }
 
-func (e *DataColumnSidecar) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubDataColumnSidecarData, error) {
+func (e *DataColumnSidecarGloas) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubDataColumnSidecarData, error) {
 	wallclockSlot, wallclockEpoch, err := e.wallclock.FromTime(timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallclock time: %w", err)
