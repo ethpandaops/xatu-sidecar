@@ -5,7 +5,7 @@ go 1.26.8
 require (
 	github.com/beevik/ntp v1.4.3
 	github.com/ethpandaops/ethwallclock v0.4.0
-	github.com/ethpandaops/xatu v1.22.2-0.20260929050005-6cebb8c4bde6
+	github.com/ethpandaops/xatu v1.23.0
 	github.com/go-co-op/gocron/v2 v2.22.0
 	github.com/google/uuid v1.6.0
 	github.com/jellydator/ttlcache/v3 v3.4.1
