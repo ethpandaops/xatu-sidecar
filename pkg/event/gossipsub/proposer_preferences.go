@@ -1,4 +1,3 @@
-// Package gossipsub provides Ethereum beacon chain event processing for gossipsub messages.
 package gossipsub
 
 import (
@@ -18,10 +17,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// BeaconBlock represents a processed beacon block event from gossipsub.
-type BeaconBlock struct {
+// ProposerPreferences represents a processed ePBS proposer_preferences event from gossipsub.
+type ProposerPreferences struct {
 	duplicateCache *ttlcache.Cache[string, time.Time]
-	event          *RawBeaconBlock
+	event          *RawProposerPreferences
 	wallclock      *ethwallclock.EthereumBeaconChain
 	clientMeta     *xatu.ClientMeta
 	log            logrus.FieldLogger
@@ -30,23 +29,25 @@ type BeaconBlock struct {
 	clockDrift     time.Duration
 }
 
-// RawBeaconBlock represents the raw beacon block data received from gossipsub.
-type RawBeaconBlock struct {
-	TimestampMs   int64  `json:"timestamp_ms"`
-	Slot          uint64 `json:"slot"`
-	Epoch         uint64 `json:"epoch"`
-	ProposerIndex uint64 `json:"proposer_index"`
-	MessageSize   uint32 `json:"message_size"`
-	PeerID        string `json:"peer_id"`
-	MessageID     string `json:"message_id"`
-	Topic         string `json:"topic"`
-	BlockRoot     string `json:"block_root"`
+// RawProposerPreferences represents the raw proposer preferences data received from gossipsub.
+// Slot carries the preference's proposal slot.
+type RawProposerPreferences struct {
+	TimestampMs    int64  `json:"timestamp_ms"`
+	Slot           uint64 `json:"slot"`
+	Epoch          uint64 `json:"epoch"`
+	ValidatorIndex uint64 `json:"validator_index"`
+	TargetGasLimit uint64 `json:"target_gas_limit"`
+	MessageSize    uint32 `json:"message_size"`
+	PeerID         string `json:"peer_id"`
+	MessageID      string `json:"message_id"`
+	Topic          string `json:"topic"`
+	FeeRecipient   string `json:"fee_recipient"`
 }
 
-// NewBeaconBlock creates a new BeaconBlock instance from raw event data.
-func NewBeaconBlock(log logrus.FieldLogger, event *RawBeaconBlock, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *BeaconBlock {
-	return &BeaconBlock{
-		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_BEACON_BLOCK"),
+// NewProposerPreferences creates a new ProposerPreferences instance from raw event data.
+func NewProposerPreferences(log logrus.FieldLogger, event *RawProposerPreferences, clockDrift time.Duration, wallclock *ethwallclock.EthereumBeaconChain, duplicateCache *ttlcache.Cache[string, time.Time], clientMeta *xatu.ClientMeta) *ProposerPreferences {
+	return &ProposerPreferences{
+		log:            log.WithField("event", "LIBP2P_TRACE_GOSSIPSUB_PROPOSER_PREFERENCES"),
 		now:            time.UnixMilli(event.TimestampMs),
 		event:          event,
 		clockDrift:     clockDrift,
@@ -57,42 +58,45 @@ func NewBeaconBlock(log logrus.FieldLogger, event *RawBeaconBlock, clockDrift ti
 	}
 }
 
-// Decorate enriches the beacon block event with additional metadata and returns a decorated event.
-func (e *BeaconBlock) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
+// Decorate enriches the proposer preferences event with additional metadata and returns a decorated event.
+func (e *ProposerPreferences) Decorate(ctx context.Context) (*xatu.DecoratedEvent, error) {
 	timestamp := time.UnixMilli(e.event.TimestampMs).Add(e.clockDrift)
 
 	decoratedEvent := &xatu.DecoratedEvent{
 		Event: &xatu.Event{
-			Name:     xatu.Event_LIBP2P_TRACE_GOSSIPSUB_BEACON_BLOCK,
+			Name:     xatu.Event_LIBP2P_TRACE_GOSSIPSUB_PROPOSER_PREFERENCES,
 			DateTime: timestamppb.New(timestamp),
 			Id:       e.id.String(),
 		},
 		Meta: &xatu.Meta{
 			Client: e.clientMeta,
 		},
-		Data: &xatu.DecoratedEvent_Libp2PTraceGossipsubBeaconBlock{
-			Libp2PTraceGossipsubBeaconBlock: &gossipsub.BeaconBlock{
-				Slot:          &wrapperspb.UInt64Value{Value: e.event.Slot},
-				Block:         &wrapperspb.StringValue{Value: e.event.BlockRoot},
-				ProposerIndex: &wrapperspb.UInt64Value{Value: e.event.ProposerIndex},
+		Data: &xatu.DecoratedEvent_Libp2PTraceGossipsubProposerPreferences{
+			Libp2PTraceGossipsubProposerPreferences: &gossipsub.ProposerPreferences{
+				Slot:           &wrapperspb.UInt64Value{Value: e.event.Slot},
+				ValidatorIndex: &wrapperspb.UInt64Value{Value: e.event.ValidatorIndex},
+				FeeRecipient:   wrapperspb.String(e.event.FeeRecipient),
+				TargetGasLimit: &wrapperspb.UInt64Value{Value: e.event.TargetGasLimit},
 			},
 		},
 	}
 
 	additionalData, err := e.getAdditionalData(ctx, time.UnixMilli(e.event.TimestampMs))
 	if err != nil {
-		e.log.WithError(err).Error("Failed to get extra beacon block data")
+		e.log.WithError(err).Error("Failed to get extra proposer preferences data")
 	} else {
-		decoratedEvent.Meta.Client.AdditionalData = &xatu.ClientMeta_Libp2PTraceGossipsubBeaconBlock{
-			Libp2PTraceGossipsubBeaconBlock: additionalData,
+		decoratedEvent.Meta.Client.AdditionalData = &xatu.ClientMeta_Libp2PTraceGossipsubProposerPreferences{
+			Libp2PTraceGossipsubProposerPreferences: additionalData,
 		}
 	}
 
 	return decoratedEvent, nil
 }
 
-// ShouldIgnore determines if the beacon block event should be ignored based on deduplication and age.
-func (e *BeaconBlock) ShouldIgnore(_ context.Context) (bool, error) {
+// ShouldIgnore determines if the proposer preferences event should be ignored based on deduplication.
+// Unlike block/sidecar events there is no age cutoff: preferences are published ahead of the
+// proposal slot, so recency relative to the wallclock is not a validity signal.
+func (e *ProposerPreferences) ShouldIgnore(_ context.Context) (bool, error) {
 	if e.event == nil {
 		return true, nil
 	}
@@ -108,35 +112,22 @@ func (e *BeaconBlock) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-		}).Debug("Duplicate beacon block event received")
+			"validator_index":          e.event.ValidatorIndex,
+		}).Debug("Duplicate proposer preferences event received")
 
 		return true, nil
-	}
-
-	currentSlot, _, err := e.wallclock.Now()
-	if err != nil {
-		return true, err
-	}
-
-	// ignore blocks that are more than 16 slots old
-	// Guard against unsigned underflow when chain is young (slot < 16)
-	if currentSlot.Number() >= 16 {
-		slotLimit := currentSlot.Number() - 16
-		if e.event.Slot < slotLimit {
-			return true, nil
-		}
 	}
 
 	return false, nil
 }
 
-func (e *BeaconBlock) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubBeaconBlockData, error) {
+func (e *ProposerPreferences) getAdditionalData(_ context.Context, timestamp time.Time) (*xatu.ClientMeta_AdditionalLibP2PTraceGossipSubProposerPreferencesData, error) {
 	wallclockSlot, wallclockEpoch, err := e.wallclock.FromTime(timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallclock time: %w", err)
 	}
 
-	extra := &xatu.ClientMeta_AdditionalLibP2PTraceGossipSubBeaconBlockData{
+	extra := &xatu.ClientMeta_AdditionalLibP2PTraceGossipSubProposerPreferencesData{
 		WallclockSlot: &xatu.SlotV2{
 			Number:        &wrapperspb.UInt64Value{Value: wallclockSlot.Number()},
 			StartDateTime: timestamppb.New(wallclockSlot.TimeWindow().Start()),

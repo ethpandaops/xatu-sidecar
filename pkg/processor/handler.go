@@ -59,11 +59,22 @@ const (
 	EventTypeBlobSidecar EventType = "BLOB_SIDECAR"
 	// EventTypeDataColumnSidecar represents a data column sidecar event.
 	EventTypeDataColumnSidecar EventType = "DATA_COLUMN_SIDECAR"
+	// EventTypeDataColumnSidecarGloas represents a Gloas-shaped data column sidecar event.
+	EventTypeDataColumnSidecarGloas EventType = "DATA_COLUMN_SIDECAR_GLOAS"
+	// EventTypeExecutionPayloadEnvelope represents an ePBS execution payload envelope event.
+	EventTypeExecutionPayloadEnvelope EventType = "EXECUTION_PAYLOAD_ENVELOPE"
+	// EventTypeExecutionPayloadBid represents an ePBS execution payload bid event.
+	EventTypeExecutionPayloadBid EventType = "EXECUTION_PAYLOAD_BID"
+	// EventTypePayloadAttestationMessage represents an ePBS payload attestation message (PTC vote) event.
+	EventTypePayloadAttestationMessage EventType = "PAYLOAD_ATTESTATION_MESSAGE"
+	// EventTypeProposerPreferences represents an ePBS proposer preferences event.
+	EventTypeProposerPreferences EventType = "PROPOSER_PREFERENCES"
 )
 
 // NewHandler creates a new Handler instance.
 func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Handler, error) {
-	log = log.WithField("module", "processor")
+	entry := log.WithField("module", "processor")
+	log = entry
 
 	if config == nil {
 		return nil, ErrConfigRequired
@@ -73,7 +84,7 @@ func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Han
 		return nil, err
 	}
 
-	sinks, err := config.CreateSinks(log)
+	sinks, err := config.CreateSinks(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +262,126 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 		}
 
 		decoratedEvent, err := dataColumnSidecar.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
+
+	case EventTypeDataColumnSidecarGloas:
+		var eventData gossipsub.RawDataColumnSidecarGloas
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		dataColumnSidecarGloas := gossipsub.NewDataColumnSidecarGloas(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
+
+		ignore, err := dataColumnSidecarGloas.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := dataColumnSidecarGloas.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
+
+	case EventTypeExecutionPayloadEnvelope:
+		var eventData gossipsub.RawExecutionPayloadEnvelope
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		envelope := gossipsub.NewExecutionPayloadEnvelope(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadEnvelope, clientMeta)
+
+		ignore, err := envelope.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := envelope.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
+
+	case EventTypeExecutionPayloadBid:
+		var eventData gossipsub.RawExecutionPayloadBid
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		bid := gossipsub.NewExecutionPayloadBid(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadBid, clientMeta)
+
+		ignore, err := bid.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := bid.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
+
+	case EventTypePayloadAttestationMessage:
+		var eventData gossipsub.RawPayloadAttestationMessage
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		payloadAttestation := gossipsub.NewPayloadAttestationMessage(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPayloadAttestationMessage, clientMeta)
+
+		ignore, err := payloadAttestation.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := payloadAttestation.Decorate(ctx)
+		if err != nil {
+			return err
+		}
+
+		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
+
+	case EventTypeProposerPreferences:
+		var eventData gossipsub.RawProposerPreferences
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		preferences := gossipsub.NewProposerPreferences(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubProposerPreferences, clientMeta)
+
+		ignore, err := preferences.ShouldIgnore(ctx)
+		if err != nil {
+			return err
+		}
+
+		if ignore {
+			return nil
+		}
+
+		decoratedEvent, err := preferences.Decorate(ctx)
 		if err != nil {
 			return err
 		}

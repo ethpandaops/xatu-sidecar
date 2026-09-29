@@ -59,11 +59,11 @@ jobs:
           cp .goreleaser.yaml .goreleaser.yaml.new
 
           # If we have a RELEASE_SUFFIX, update the goreleaser config to not set
-          # the release as the latest
+          # the release as the latest. Edit the existing release block in place:
+          # appending a second `release:` block makes the YAML invalid
+          # (duplicate mapping key).
           if [[ -n "$RELEASE_SUFFIX" ]]; then
-            echo "release:" >> .goreleaser.yaml.new
-            echo "  prerelease: true" >> .goreleaser.yaml.new
-            echo "  make_latest: false" >> .goreleaser.yaml.new
+            sed -i 's/^  prerelease: auto$/  prerelease: true\n  make_latest: false/' .goreleaser.yaml.new
           fi
       - name: Run GoReleaser in Docker
         run: |
