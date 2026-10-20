@@ -110,7 +110,7 @@ func (e *DataColumnSidecarGloas) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-			"column_index":             e.event.ColumnIndex,
+			logFieldColumnIndex:        e.event.ColumnIndex,
 		}).Debug("Duplicate gloas data column sidecar event received")
 
 		return true, nil
