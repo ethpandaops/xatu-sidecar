@@ -9,6 +9,7 @@ import (
 	//nolint:gosec // only exposed if pprofAddr config is set
 	_ "net/http/pprof"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/beevik/ntp"
@@ -43,7 +44,7 @@ type Handler struct {
 	log            logrus.FieldLogger
 	scheduler      gocron.Scheduler
 	id             uuid.UUID
-	clockDrift     time.Duration
+	clockDrift     atomic.Int64
 }
 
 // EventType represents the type of blockchain event.
@@ -121,7 +122,6 @@ func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Han
 	s := &Handler{
 		Config:         config,
 		sinks:          sinks,
-		clockDrift:     time.Duration(0),
 		log:            log,
 		duplicateCache: duplicateCache,
 		blockSlots:     blockSlots,
@@ -162,7 +162,8 @@ func (h *Handler) Start(ctx context.Context) error {
 //
 //nolint:gocyclo // This function handles multiple event types in a switch statement
 func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, eventType EventType) error {
-	clientMeta := h.createNewClientMeta(ctx)
+	clockDrift := h.currentClockDrift()
+	clientMeta := h.createNewClientMeta(ctx, clockDrift)
 
 	switch eventType {
 	case EventTypeBeaconBlock:
@@ -173,7 +174,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 
 		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
 
-		beaconBlock := gossipsub.NewBeaconBlock(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
+		beaconBlock := gossipsub.NewBeaconBlock(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
 
 		ignore, err := beaconBlock.ShouldIgnore(ctx)
 		if err != nil {
@@ -197,7 +198,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		attestation := gossipsub.NewAttestation(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubAttestation, clientMeta)
+		attestation := gossipsub.NewAttestation(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubAttestation, clientMeta)
 
 		ignore, err := attestation.ShouldIgnore(ctx)
 		if err != nil {
@@ -221,7 +222,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		aggregateAndProof := gossipsub.NewAggregateAndProof(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubAggregateAndProof, clientMeta)
+		aggregateAndProof := gossipsub.NewAggregateAndProof(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubAggregateAndProof, clientMeta)
 
 		ignore, err := aggregateAndProof.ShouldIgnore(ctx)
 		if err != nil {
@@ -245,7 +246,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		blobSidecar := gossipsub.NewBlobSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBlobSidecar, clientMeta)
+		blobSidecar := gossipsub.NewBlobSidecar(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubBlobSidecar, clientMeta)
 
 		ignore, err := blobSidecar.ShouldIgnore(ctx)
 		if err != nil {
@@ -271,7 +272,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 
 		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
 
-		dataColumnSidecar := gossipsub.NewDataColumnSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
+		dataColumnSidecar := gossipsub.NewDataColumnSidecar(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
 
 		ignore, err := dataColumnSidecar.ShouldIgnore(ctx)
 		if err != nil {
@@ -297,7 +298,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 
 		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
 
-		dataColumnSidecarGloas := gossipsub.NewDataColumnSidecarGloas(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
+		dataColumnSidecarGloas := gossipsub.NewDataColumnSidecarGloas(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
 
 		ignore, err := dataColumnSidecarGloas.ShouldIgnore(ctx)
 		if err != nil {
@@ -321,7 +322,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		envelope := gossipsub.NewExecutionPayloadEnvelope(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadEnvelope, clientMeta)
+		envelope := gossipsub.NewExecutionPayloadEnvelope(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadEnvelope, clientMeta)
 
 		ignore, err := envelope.ShouldIgnore(ctx)
 		if err != nil {
@@ -345,7 +346,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		bid := gossipsub.NewExecutionPayloadBid(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadBid, clientMeta)
+		bid := gossipsub.NewExecutionPayloadBid(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubExecutionPayloadBid, clientMeta)
 
 		ignore, err := bid.ShouldIgnore(ctx)
 		if err != nil {
@@ -369,7 +370,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		payloadAttestation := gossipsub.NewPayloadAttestationMessage(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPayloadAttestationMessage, clientMeta)
+		payloadAttestation := gossipsub.NewPayloadAttestationMessage(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubPayloadAttestationMessage, clientMeta)
 
 		ignore, err := payloadAttestation.ShouldIgnore(ctx)
 		if err != nil {
@@ -393,7 +394,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		preferences := gossipsub.NewProposerPreferences(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubProposerPreferences, clientMeta)
+		preferences := gossipsub.NewProposerPreferences(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubProposerPreferences, clientMeta)
 
 		ignore, err := preferences.ShouldIgnore(ctx)
 		if err != nil {
@@ -417,7 +418,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		return h.exportEvent(ctx, gossipsub.NewPartialDataColumn(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumn, h.blockSlots, clientMeta))
+		return h.exportEvent(ctx, gossipsub.NewPartialDataColumn(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumn, h.blockSlots, clientMeta))
 
 	case EventTypeDataColumnCompleted:
 		var eventData gossipsub.RawDataColumnCompleted
@@ -425,7 +426,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		return h.exportEvent(ctx, gossipsub.NewDataColumnCompleted(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.DataColumnCompleted, h.blockSlots, clientMeta))
+		return h.exportEvent(ctx, gossipsub.NewDataColumnCompleted(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.DataColumnCompleted, h.blockSlots, clientMeta))
 
 	case EventTypePartialDataColumnOutcome:
 		var eventData gossipsub.RawPartialDataColumnOutcome
@@ -433,7 +434,7 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
-		return h.exportEvent(ctx, gossipsub.NewPartialDataColumnOutcome(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumnOutcome, h.blockSlots, clientMeta))
+		return h.exportEvent(ctx, gossipsub.NewPartialDataColumnOutcome(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumnOutcome, h.blockSlots, clientMeta))
 
 	default:
 		return ErrUnsupportedEventType
@@ -459,7 +460,22 @@ func (h *Handler) exportEvent(ctx context.Context, event decoratedEventSource) e
 	return h.handleNewDecoratedEvent(ctx, decoratedEvent)
 }
 
-func (h *Handler) createNewClientMeta(_ context.Context) *xatu.ClientMeta {
+// currentClockDrift returns the latest NTP clock offset.
+func (h *Handler) currentClockDrift() time.Duration {
+	return time.Duration(h.clockDrift.Load())
+}
+
+// clockDriftMillis returns |drift| in milliseconds, as ClientMeta.clock_drift is unsigned.
+func clockDriftMillis(drift time.Duration) uint64 {
+	ms := drift.Milliseconds()
+	if ms < 0 {
+		ms = -ms
+	}
+
+	return uint64(ms) //nolint:gosec // ms is non-negative
+}
+
+func (h *Handler) createNewClientMeta(_ context.Context, clockDrift time.Duration) *xatu.ClientMeta {
 	return &xatu.ClientMeta{
 		Name:           h.Config.Name,
 		Version:        version.Short(),
@@ -467,7 +483,7 @@ func (h *Handler) createNewClientMeta(_ context.Context) *xatu.ClientMeta {
 		Implementation: fmt.Sprintf("Xatu Sidecar (%s)", h.Config.Ethereum.Implementation),
 		ModuleName:     xatu.ModuleName_SIDECAR,
 		Os:             runtime.GOOS,
-		ClockDrift:     uint64(h.clockDrift.Milliseconds()), //nolint:gosec // milliseconds won't overflow
+		ClockDrift:     clockDriftMillis(clockDrift),
 		Ethereum: &xatu.ClientMeta_Ethereum{
 			Network: &xatu.ClientMeta_Ethereum_Network{
 				Name: h.Config.Ethereum.Network.Name,
@@ -515,12 +531,13 @@ func (h *Handler) syncClockDrift(_ context.Context) error {
 		return err
 	}
 
-	h.clockDrift = response.ClockOffset
+	drift := response.ClockOffset
+	h.clockDrift.Store(int64(drift))
 
-	h.log.WithField("drift", h.clockDrift).Debug("Updated clock drift")
+	h.log.WithField("drift", drift).Debug("Updated clock drift")
 
-	if h.clockDrift > 2*time.Second || h.clockDrift < -2*time.Second {
-		h.log.WithField("drift", h.clockDrift).Warn("Large clock drift detected, consider configuring an NTP server on your instance")
+	if drift > 2*time.Second || drift < -2*time.Second {
+		h.log.WithField("drift", drift).Warn("Large clock drift detected, consider configuring an NTP server on your instance")
 	}
 
 	return err
