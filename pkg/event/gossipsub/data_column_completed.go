@@ -29,11 +29,12 @@ type DataColumnCompleted struct {
 }
 
 // RawDataColumnCompleted is the raw data column completion received from the client. PeerID is the
-// peer whose message completed the column, empty when no peer did (EL, reconstruction).
+// peer whose message completed the column, empty when no peer did (EL, reconstruction). Topic is the
+// column's data_column_sidecar topic whatever the completion path.
 type RawDataColumnCompleted struct {
 	TimestampMs         int64  `json:"timestamp_ms"`
 	PeerID              string `json:"peer_id"`
-	Topic               string `json:"topic,omitempty"`
+	Topic               string `json:"topic"`
 	BlockRoot           string `json:"block_root"`
 	Slot                uint64 `json:"slot"`
 	ColumnIndex         uint64 `json:"column_index"`
