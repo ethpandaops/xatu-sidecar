@@ -18,11 +18,17 @@ type DuplicateCache struct {
 	GossipsubExecutionPayloadBid       *ttlcache.Cache[string, time.Time]
 	GossipsubPayloadAttestationMessage *ttlcache.Cache[string, time.Time]
 	GossipsubProposerPreferences       *ttlcache.Cache[string, time.Time]
+	GossipsubPartialDataColumn         *ttlcache.Cache[string, time.Time]
+	GossipsubPartialDataColumnOutcome  *ttlcache.Cache[string, time.Time]
+	DataColumnCompleted                *ttlcache.Cache[string, time.Time]
 }
 
 const (
 	// ConsensusTTL defines the time-to-live for consensus-related cache entries.
 	ConsensusTTL = 7 * time.Minute
+	// PartialTTL defines the time-to-live for partial data column part and outcome entries,
+	// which only guard against the same observation being delivered twice.
+	PartialTTL = 30 * time.Second
 )
 
 // NewDuplicateCache creates a new instance of DuplicateCache with configured TTL caches.
@@ -55,6 +61,15 @@ func NewDuplicateCache() *DuplicateCache {
 		GossipsubProposerPreferences: ttlcache.New(
 			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
 		),
+		GossipsubPartialDataColumn: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](PartialTTL),
+		),
+		GossipsubPartialDataColumnOutcome: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](PartialTTL),
+		),
+		DataColumnCompleted: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
 	}
 }
 
@@ -69,4 +84,7 @@ func (d *DuplicateCache) Start() {
 	go d.GossipsubExecutionPayloadBid.Start()
 	go d.GossipsubPayloadAttestationMessage.Start()
 	go d.GossipsubProposerPreferences.Start()
+	go d.GossipsubPartialDataColumn.Start()
+	go d.GossipsubPartialDataColumnOutcome.Start()
+	go d.DataColumnCompleted.Start()
 }

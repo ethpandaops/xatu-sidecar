@@ -117,7 +117,7 @@ func (e *DataColumnSidecar) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-			"column_index":             e.event.ColumnIndex,
+			logFieldColumnIndex:        e.event.ColumnIndex,
 			"kzg_commitments_count":    e.event.KzgCommitmentsCount,
 		}).Debug("Duplicate data column sidecar event received")
 

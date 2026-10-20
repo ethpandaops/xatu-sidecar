@@ -37,6 +37,7 @@ type Handler struct {
 	sinks          []output.Sink
 	Config         *Config
 	duplicateCache *cache.DuplicateCache
+	blockSlots     *cache.BlockSlotCache
 	wallclock      *ethwallclock.EthereumBeaconChain
 	summary        *Summary
 	log            logrus.FieldLogger
@@ -69,7 +70,19 @@ const (
 	EventTypePayloadAttestationMessage EventType = "PAYLOAD_ATTESTATION_MESSAGE"
 	// EventTypeProposerPreferences represents an ePBS proposer preferences event.
 	EventTypeProposerPreferences EventType = "PROPOSER_PREFERENCES"
+	// EventTypePartialDataColumn represents a gossipsub partial messages extension part on a data column topic.
+	EventTypePartialDataColumn EventType = "PARTIAL_DATA_COLUMN"
+	// EventTypeDataColumnCompleted represents a custody data column becoming fully available.
+	EventTypeDataColumnCompleted EventType = "DATA_COLUMN_COMPLETED"
+	// EventTypePartialDataColumnOutcome represents the validation verdict for a received partial data column.
+	EventTypePartialDataColumnOutcome EventType = "PARTIAL_DATA_COLUMN_OUTCOME"
 )
+
+// decoratedEventSource is a raw client event that can be filtered and decorated for export.
+type decoratedEventSource interface {
+	ShouldIgnore(ctx context.Context) (bool, error)
+	Decorate(ctx context.Context) (*xatu.DecoratedEvent, error)
+}
 
 // NewHandler creates a new Handler instance.
 func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Handler, error) {
@@ -97,6 +110,9 @@ func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Han
 	duplicateCache := cache.NewDuplicateCache()
 	duplicateCache.Start()
 
+	blockSlots := cache.NewBlockSlotCache()
+	blockSlots.Start()
+
 	scheduler, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
 	if err != nil {
 		return nil, err
@@ -108,6 +124,7 @@ func NewHandler(_ context.Context, log logrus.FieldLogger, config *Config) (*Han
 		clockDrift:     time.Duration(0),
 		log:            log,
 		duplicateCache: duplicateCache,
+		blockSlots:     blockSlots,
 		wallclock:      wallclock,
 		id:             uuid.New(),
 		summary:        NewSummary(log, time.Duration(60)*time.Second),
@@ -153,6 +170,8 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
 			return err
 		}
+
+		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
 
 		beaconBlock := gossipsub.NewBeaconBlock(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubBeaconBlock, clientMeta)
 
@@ -250,6 +269,8 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 			return err
 		}
 
+		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
+
 		dataColumnSidecar := gossipsub.NewDataColumnSidecar(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
 
 		ignore, err := dataColumnSidecar.ShouldIgnore(ctx)
@@ -273,6 +294,8 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
 			return err
 		}
+
+		h.blockSlots.Resolve(eventData.BlockRoot, eventData.Slot)
 
 		dataColumnSidecarGloas := gossipsub.NewDataColumnSidecarGloas(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubDataColumnSidecar, clientMeta)
 
@@ -388,9 +411,52 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 
 		return h.handleNewDecoratedEvent(ctx, decoratedEvent)
 
+	case EventTypePartialDataColumn:
+		var eventData gossipsub.RawPartialDataColumn
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		return h.exportEvent(ctx, gossipsub.NewPartialDataColumn(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumn, h.blockSlots, clientMeta))
+
+	case EventTypeDataColumnCompleted:
+		var eventData gossipsub.RawDataColumnCompleted
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		return h.exportEvent(ctx, gossipsub.NewDataColumnCompleted(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.DataColumnCompleted, h.blockSlots, clientMeta))
+
+	case EventTypePartialDataColumnOutcome:
+		var eventData gossipsub.RawPartialDataColumnOutcome
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		return h.exportEvent(ctx, gossipsub.NewPartialDataColumnOutcome(h.log, &eventData, h.clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumnOutcome, h.blockSlots, clientMeta))
+
 	default:
 		return ErrUnsupportedEventType
 	}
+}
+
+// exportEvent decorates event and sends it to the sinks unless it should be ignored.
+func (h *Handler) exportEvent(ctx context.Context, event decoratedEventSource) error {
+	ignore, err := event.ShouldIgnore(ctx)
+	if err != nil {
+		return err
+	}
+
+	if ignore {
+		return nil
+	}
+
+	decoratedEvent, err := event.Decorate(ctx)
+	if err != nil {
+		return err
+	}
+
+	return h.handleNewDecoratedEvent(ctx, decoratedEvent)
 }
 
 func (h *Handler) createNewClientMeta(_ context.Context) *xatu.ClientMeta {
@@ -498,6 +564,10 @@ func (h *Handler) Stop(ctx context.Context) error {
 
 	if h.wallclock != nil {
 		h.wallclock.Stop()
+	}
+
+	if h.blockSlots != nil {
+		h.blockSlots.Stop()
 	}
 
 	return nil

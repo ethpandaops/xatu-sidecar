@@ -111,6 +111,9 @@ The `event_type` field must be one of the following string values:
 - `"AGGREGATE_AND_PROOF"` - Aggregated attestations
 - `"BLOB_SIDECAR"` - Blob data for EIP-4844
 - `"DATA_COLUMN_SIDECAR"` - Data availability sampling columns
+- `"PARTIAL_DATA_COLUMN"` - Gossipsub partial messages extension parts on data column topics
+- `"DATA_COLUMN_COMPLETED"` - A custody data column became fully available, by whatever path
+- `"PARTIAL_DATA_COLUMN_OUTCOME"` - Validation verdict for a received partial data column
 
 ### BEACON_BLOCK Payload
 ```json
@@ -197,14 +200,12 @@ The `event_type` field must be one of the following string values:
 ```
 
 ### DATA_COLUMN_SIDECAR Payload
-
-### BLOB_SIDECAR Payload
 ```json
 {
-    "event_type": "BLOB_SIDECAR",
+    "event_type": "DATA_COLUMN_SIDECAR",
     "peer_id": "16Uiu2HAm...",
     "message_id": "msg_12345",
-    "topic": "/eth2/abc123/blob_sidecar_0/ssz_snappy",
+    "topic": "/eth2/abc123/data_column_sidecar_0/ssz_snappy",
     "message_size": 131072,
     "timestamp_ms": 1234567890123,
     "slot": 1234567,
@@ -216,6 +217,97 @@ The `event_type` field must be one of the following string values:
     "column_index": 0,
     "kzg_commitments_count": 5,
     "client": "lighthouse/v4.5.0"
+}
+```
+
+### PARTIAL_DATA_COLUMN Payload
+
+One gossipsub partial messages extension part on a data column topic.
+
+- `direction`: `RECV`, `SEND` or `DROP`. `capture_point`: `WIRE` (raw RPC) or `APP` (after the gossipsub router filtered it).
+- `peer_id` is the sender for `RECV` and the recipient for `SEND`/`DROP`. It is empty when the client publishes to the router rather than to one peer.
+- `group_id` is the hex partial group ID; `group_version` is its first byte (0 fulu, 1 gloas).
+- `slot` is 0 when unknown (fulu groups only carry a block root). The sidecar then fills it from earlier events for the same `block_root`.
+- `cells_bitmap`, `metadata_available` and `metadata_requests` are hex encoded SSZ bitlists. `bitmap_length` is the bitlist length (the block's blob count).
+- `message_size` is the encoded partial message size, 0 for metadata-only parts.
+
+```json
+{
+    "event_type": "PARTIAL_DATA_COLUMN",
+    "timestamp_ms": 1234567890123,
+    "direction": "RECV",
+    "capture_point": "APP",
+    "peer_id": "16Uiu2HAm...",
+    "topic": "/eth2/abc123/data_column_sidecar_7/ssz_snappy",
+    "group_id": "0x00abcdef...",
+    "group_version": 0,
+    "block_root": "0xabcdef...",
+    "slot": 1234567,
+    "column_index": 7,
+    "has_message": true,
+    "message_size": 4242,
+    "cells_count": 2,
+    "cells_bitmap": "0x0d",
+    "bitmap_length": 3,
+    "has_header": true,
+    "kzg_commitments_count": 3,
+    "proposer_index": 12345,
+    "has_metadata": true,
+    "metadata_size": 10,
+    "metadata_available_count": 2,
+    "metadata_requests_count": 3,
+    "metadata_available": "0x0d",
+    "metadata_requests": "0x0f"
+}
+```
+
+### DATA_COLUMN_COMPLETED Payload
+
+A custody data column became fully available. Only the first completion per `block_root` and `column_index` is exported.
+
+- `completed_via`: `FULL_GOSSIP`, `PARTIAL_GOSSIP`, `EL`, `RECONSTRUCTION` or `UNKNOWN`.
+- `peer_id` is the peer whose message completed the column, empty for `EL` and `RECONSTRUCTION`. `topic` is optional.
+
+```json
+{
+    "event_type": "DATA_COLUMN_COMPLETED",
+    "timestamp_ms": 1234567890123,
+    "peer_id": "16Uiu2HAm...",
+    "block_root": "0xabcdef...",
+    "slot": 1234567,
+    "column_index": 7,
+    "completed_via": "PARTIAL_GOSSIP",
+    "cells_total": 6,
+    "cells_from_gossip": 2,
+    "cells_from_el": 4,
+    "contributing_peers": 1,
+    "kzg_commitments_count": 6
+}
+```
+
+### PARTIAL_DATA_COLUMN_OUTCOME Payload
+
+The validation verdict for one received partial data column message.
+
+- `stage`: `DECODE`, `HEADER` or `CELLS`. `outcome`: `ACCEPT`, `IGNORE` or `REJECT`. `reason` is empty for `ACCEPT`.
+- `new_cells_count` is the number of cells the message added to the node's copy of the column.
+- `slot` is 0 when unknown and is filled the same way as for `PARTIAL_DATA_COLUMN`.
+
+```json
+{
+    "event_type": "PARTIAL_DATA_COLUMN_OUTCOME",
+    "timestamp_ms": 1234567890123,
+    "peer_id": "16Uiu2HAm...",
+    "topic": "/eth2/abc123/data_column_sidecar_7/ssz_snappy",
+    "group_id": "0x00abcdef...",
+    "block_root": "0xabcdef...",
+    "slot": 1234567,
+    "column_index": 7,
+    "stage": "CELLS",
+    "outcome": "ACCEPT",
+    "reason": "",
+    "cells_count": 2,
+    "new_cells_count": 1
 }
 ```
 
