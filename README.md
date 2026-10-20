@@ -266,13 +266,14 @@ One gossipsub partial messages extension part on a data column topic.
 A custody data column became fully available. Only the first completion per `block_root` and `column_index` is exported.
 
 - `completed_via`: `FULL_GOSSIP`, `PARTIAL_GOSSIP`, `EL`, `RECONSTRUCTION` or `UNKNOWN`.
-- `peer_id` is the peer whose message completed the column, empty for `EL` and `RECONSTRUCTION`. `topic` is optional.
+- `peer_id` is the peer whose message completed the column, empty for `EL` and `RECONSTRUCTION`. `topic` is the column's `data_column_sidecar_{subnet}` topic, whatever the path.
 
 ```json
 {
     "event_type": "DATA_COLUMN_COMPLETED",
     "timestamp_ms": 1234567890123,
     "peer_id": "16Uiu2HAm...",
+    "topic": "/eth2/abc123/data_column_sidecar_7/ssz_snappy",
     "block_root": "0xabcdef...",
     "slot": 1234567,
     "column_index": 7,

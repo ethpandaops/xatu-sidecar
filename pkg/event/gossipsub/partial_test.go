@@ -300,6 +300,7 @@ func TestDataColumnCompletedDecorate(t *testing.T) {
 	f := newPartialFixture(t)
 	raw := &RawDataColumnCompleted{
 		TimestampMs:         f.now.UnixMilli(),
+		Topic:               testTopic,
 		BlockRoot:           testBlockRoot,
 		Slot:                testCurrentSlot,
 		ColumnIndex:         3,
@@ -324,6 +325,10 @@ func TestDataColumnCompletedDecorate(t *testing.T) {
 	extra := event.GetMeta().GetClient().GetLibp2PTraceDataColumnCompleted()
 	if got := extra.GetMetadata().GetPeerId().GetValue(); got != "" {
 		t.Errorf("EL completion should carry no peer, got %q", got)
+	}
+
+	if got := extra.GetTopic().GetValue(); got != testTopic {
+		t.Errorf("topic = %q, want %q", got, testTopic)
 	}
 
 	if extra.GetSlot().GetNumber().GetValue() != testCurrentSlot {

@@ -70,8 +70,8 @@ github.com/ethpandaops/ethwallclock v0.4.0 h1:+sgnhf4pk6hLPukP076VxkiLloE4L0Yk1y
 github.com/ethpandaops/ethwallclock v0.4.0/go.mod h1:y0Cu+mhGLlem19vnAV2x0hpFS5KZ7oOi2SWYayv9l24=
 github.com/ethpandaops/go-eth2-client v0.1.10 h1:AGROjkS5jMkveL1E46wyWNv5JLJNWWyZE/hIVBibIrg=
 github.com/ethpandaops/go-eth2-client v0.1.10/go.mod h1:sIVbaug0GsltsJS+hj8ID4dmWBIt8TXoNIesvuBCGt0=
-github.com/ethpandaops/xatu v1.28.1-0.20261020014812-bde70efe142b h1:fP/4QSI24+3L+kp2lOw+J97XkW+O92Z67v/ybZJcvV0=
-github.com/ethpandaops/xatu v1.28.1-0.20261020014812-bde70efe142b/go.mod h1:u57DvLE6pj3E0QqSNvQlyCcZuEh3T0vldsgI2F6Sx+k=
+github.com/ethpandaops/xatu v1.29.0 h1:UKSewnnWUWUCIK9zvhrjfqpWLQhVW/vpmNRZFC5ND0E=
+github.com/ethpandaops/xatu v1.29.0/go.mod h1:u57DvLE6pj3E0QqSNvQlyCcZuEh3T0vldsgI2F6Sx+k=
 github.com/failsafe-go/failsafe-go v0.9.6 h1:vPSH2cry0Ee5cnR9wc9qshCDO6jdrMA9elBJNwyo4Uk=
 github.com/failsafe-go/failsafe-go v0.9.6/go.mod h1:IeRpglkcwzKagjDMh90ZhN2l4Ovt3+jemQBUbThag54=
 github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeORc=
