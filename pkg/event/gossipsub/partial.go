@@ -137,12 +137,9 @@ func isStaleSlot(wallclock *ethwallclock.EthereumBeaconChain, slot uint64) (bool
 	return currentSlot.Number() >= maxPartialSlotAge && slot < currentSlot.Number()-maxPartialSlotAge, nil
 }
 
-// peerMetadata returns trace metadata for peerID, or nil when no peer is attached to the event.
+// peerMetadata returns trace metadata for peerID. The peer is always set, empty when the event has
+// no remote peer, because xatu rejects partial data column rows without one.
 func peerMetadata(peerID string) *libp2p.TraceEventMetadata {
-	if peerID == "" {
-		return nil
-	}
-
 	return &libp2p.TraceEventMetadata{PeerId: wrapperspb.String(peerID)}
 }
 

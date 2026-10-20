@@ -173,8 +173,8 @@ func TestPartialDataColumnMetadataOnlySend(t *testing.T) {
 	}
 
 	extra := event.GetMeta().GetClient().GetLibp2PTraceGossipsubPartialDataColumn()
-	if extra.GetMetadata() != nil {
-		t.Errorf("metadata should be unset without a peer, got %v", extra.GetMetadata())
+	if peer := extra.GetMetadata().GetPeerId(); peer == nil || peer.GetValue() != "" {
+		t.Errorf("peer should be set and empty without a remote peer, got %v", peer)
 	}
 
 	if extra.GetSlot() != nil || extra.GetPropagation() != nil {
@@ -322,8 +322,8 @@ func TestDataColumnCompletedDecorate(t *testing.T) {
 	}
 
 	extra := event.GetMeta().GetClient().GetLibp2PTraceDataColumnCompleted()
-	if extra.GetMetadata() != nil {
-		t.Errorf("EL completion should carry no peer")
+	if got := extra.GetMetadata().GetPeerId().GetValue(); got != "" {
+		t.Errorf("EL completion should carry no peer, got %q", got)
 	}
 
 	if extra.GetSlot().GetNumber().GetValue() != testCurrentSlot {
