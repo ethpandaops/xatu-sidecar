@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: '1.26'
+          check-latest: true
       - name: Run apt-get update
         run: sudo apt-get update
       - name: Install cross-compiler for linux/arm64
@@ -42,4 +43,4 @@ jobs:
             -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -e RELEASE_SUFFIX="test" \
-            goreleaser/goreleaser-cross:v1.22.2 release --clean --config .goreleaser.yaml --skip=publish --skip=validate
+            goreleaser/goreleaser-cross:v1.27.3 release --clean --config .goreleaser.yaml --skip=publish --skip=validate
