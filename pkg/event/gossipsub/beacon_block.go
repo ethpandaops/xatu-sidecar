@@ -162,13 +162,7 @@ func (e *BeaconBlock) getAdditionalData(_ context.Context, timestamp time.Time) 
 
 	extra.Propagation = &xatu.PropagationV2{
 		SlotStartDiff: &wrapperspb.UInt64Value{
-			Value: func() uint64 {
-				diff := timestamp.Sub(slot.TimeWindow().Start()).Milliseconds()
-				if diff < 0 {
-					return 0
-				}
-				return uint64(diff)
-			}(),
+			Value: slotStartDiffMs(timestamp, slot.TimeWindow().Start()),
 		},
 	}
 

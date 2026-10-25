@@ -185,13 +185,7 @@ func (e *AggregateAndProof) getAdditionalData(_ context.Context, timestamp time.
 			StartDateTime: timestamppb.New(epoch.TimeWindow().Start()),
 		},
 		Propagation: &xatu.PropagationV2{
-			SlotStartDiff: wrapperspb.UInt64(func() uint64 {
-				diff := timestamp.Sub(slot.TimeWindow().Start()).Milliseconds()
-				if diff < 0 {
-					return 0
-				}
-				return uint64(diff)
-			}()),
+			SlotStartDiff: wrapperspb.UInt64(slotStartDiffMs(timestamp, slot.TimeWindow().Start())),
 		},
 		AggregatorIndex: wrapperspb.UInt64(e.event.AggregatorIndex),
 	}
