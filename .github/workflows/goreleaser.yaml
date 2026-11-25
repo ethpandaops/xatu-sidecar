@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - '*'
+  # build-branch.yaml dispatches this on the tag it pushes
+  workflow_dispatch:
+
+permissions: {}
 
 jobs:
   goreleaser:
@@ -18,6 +22,11 @@ jobs:
           ref: ${{ github.ref }}
       - name: Derive release suffix from tag (if it exists)
         run: |
+          if [[ $GITHUB_REF != refs/tags/* ]]; then
+            echo "::error::Run this workflow on a tag, not ${GITHUB_REF}"
+            exit 1
+          fi
+
           # Strip the 'refs/tags/' prefix
           TAG_NAME=${GITHUB_REF#refs/tags/}
 
