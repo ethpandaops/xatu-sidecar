@@ -1,0 +1,82 @@
+name: build-branch
+
+# Tags each push to a release/* branch as the next <major>.<minor>.<patch>-<branch>
+# prerelease (e.g. 0.0.3-gloas for release/gloas) and dispatches goreleaser.yaml
+# on that tag to publish the prerelease binaries.
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: build-branch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Compute next release tag
+        id: tag
+        run: |
+          if [[ $GITHUB_REF != refs/heads/release/* ]]; then
+            echo "::error::Run this workflow on a release/* branch, not ${GITHUB_REF}"
+            exit 1
+          fi
+
+          # Suffix is the branch name after release/ (e.g. 'gloas' from 'release/gloas')
+          RELEASE_SUFFIX=${GITHUB_REF#refs/heads/release/}
+
+          # Assigned on its own so a failed lookup fails the step
+          REMOTE_TAGS=$(git ls-remote --tags origin)
+
+          # Latest existing tag for this suffix, e.g. 0.0.2-gloas
+          LATEST_VERSION=$(awk '{print $2}' <<<"$REMOTE_TAGS" \
+            | grep -E "^refs/tags/v?[0-9]+\.[0-9]+\.[0-9]+-${RELEASE_SUFFIX}\$" \
+            | sed 's|^refs/tags/||' | sort -V | tail -n 1)
+          echo "Found latest $RELEASE_SUFFIX version: $LATEST_VERSION"
+
+          if [[ -z $LATEST_VERSION ]]; then
+            LATEST_VERSION="0.0.0"
+          fi
+
+          # Increment the last number; awk reads '2-gloas' as 2
+          NEXT_VERSION=$(awk -F. -v OFS=. '{$NF = $NF + 1;} 1' <<<"$LATEST_VERSION")
+
+          TAG="$NEXT_VERSION-$RELEASE_SUFFIX"
+          echo "Releasing version: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "Git commit: $(git rev-parse --short HEAD)"
+
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "refs/tags/$TAG"
+
+      # A tag pushed with GITHUB_TOKEN does not trigger goreleaser.yaml's push
+      # trigger, so it is dispatched on the tag explicitly.
+      - name: Dispatch goreleaser
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if ! gh workflow run goreleaser.yaml -R "$GITHUB_REPOSITORY" --ref "$TAG"; then
+            echo "::error::Failed to dispatch goreleaser.yaml on ${TAG}. Run: gh workflow run goreleaser.yaml -R ${GITHUB_REPOSITORY} --ref ${TAG}"
+            exit 1
+          fi
+          echo "Dispatched goreleaser.yaml on $TAG"
