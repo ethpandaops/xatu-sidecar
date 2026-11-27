@@ -112,7 +112,7 @@ func (e *ProposerPreferences) ShouldIgnore(_ context.Context) (bool, error) {
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-			"validator_index":          e.event.ValidatorIndex,
+			logFieldValidatorIndex:     e.event.ValidatorIndex,
 		}).Debug("Duplicate proposer preferences event received")
 
 		return true, nil

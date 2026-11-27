@@ -111,7 +111,7 @@ func (e *PayloadAttestationMessage) ShouldIgnore(_ context.Context) (bool, error
 			logFieldHash:               hash,
 			logFieldTimeSinceFirstItem: time.Since(item.Value()),
 			logFieldSlot:               e.event.Slot,
-			"validator_index":          e.event.ValidatorIndex,
+			logFieldValidatorIndex:     e.event.ValidatorIndex,
 		}).Debug("Duplicate payload attestation message event received")
 
 		return true, nil
