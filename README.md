@@ -99,6 +99,34 @@ processor:
   ntpServer: time.google.com
 ```
 
+### Environment variables
+
+The configuration can reference environment variables in any value, so values such
+as output credentials can come from the environment instead of the configuration:
+
+```yaml
+processor:
+  outputs:
+    - name: xatu-server-1
+      type: xatu
+      config:
+        address: ${XATU_ADDRESS:-localhost:8080}
+        headers:
+          authorization: "Basic ${XATU_AUTH}"
+```
+
+- `${VAR}` is replaced with the value of `VAR`. If `VAR` is unset or empty,
+  `Init` fails and logs an error naming the variable.
+- `${VAR:-default}` uses `default` when `VAR` is unset or empty. `${VAR:-}`
+  makes the variable optional.
+- Only the `${...}` form is expanded: `$VAR` and any other `$` are kept as
+  written.
+- Placeholders are expanded in values only, after the YAML is parsed. Keys and
+  comments are never expanded, and a value containing quotes, `#`, tabs or
+  newlines arrives exactly as set.
+- An unquoted placeholder takes the type of its value, so `port: ${PORT}` can
+  fill a number. A quoted placeholder is always a string.
+
 ## FFI Event Payloads
 
 When sending events via the `SendEventBatch` function, events must be sent as a JSON array. Each event in the array must include an `event_type` field matching one of the EventType constants, along with the event-specific fields.

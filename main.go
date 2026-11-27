@@ -8,6 +8,12 @@ import "C" //nolint:gocritic // C is a special CGO import, not a duplicate of un
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"regexp"
+	"slices"
+	"strings"
 	"unsafe" //nolint:gocritic // false positive - C and unsafe are different packages
 
 	"github.com/ethpandaops/xatu-sidecar/pkg/processor"
@@ -28,6 +34,85 @@ type Config struct {
 	Processor *processor.Config `yaml:"processor"`
 }
 
+var errUnsetEnvVar = errors.New("config references unset or empty environment variables")
+
+var envVarPattern = regexp.MustCompile(`\$\{([^}:]+)(?::-([^}]*))?\}`)
+
+// decodeConfig parses data, expands placeholders in scalar values (not
+// mapping keys) and decodes the result into out. A ${VAR} without a default
+// whose VAR is unset or empty is an error. A ${VAR:-default} uses the default
+// when VAR is unset or empty.
+func decodeConfig(data []byte, out any) error {
+	var doc yaml.Node
+
+	err := yaml.Unmarshal(data, &doc)
+	if err != nil {
+		return err
+	}
+
+	if doc.Kind == 0 {
+		return nil
+	}
+
+	var missing []string
+
+	expandNode(&doc, &missing)
+
+	if len(missing) > 0 {
+		return fmt.Errorf("%w: %s", errUnsetEnvVar, strings.Join(missing, ", "))
+	}
+
+	return doc.Decode(out)
+}
+
+func expandNode(n *yaml.Node, missing *[]string) {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		expanded := expandEnvVars(n.Value, missing)
+		if expanded == n.Value {
+			return
+		}
+
+		n.Value = expanded
+
+		// The parser tagged the placeholder !!str; clearing the tag lets an
+		// unquoted value resolve to int, bool, etc. as if written in the file.
+		if n.Style == 0 {
+			n.Tag = ""
+		}
+	case yaml.MappingNode:
+		for i := 1; i < len(n.Content); i += 2 {
+			expandNode(n.Content[i], missing)
+		}
+	case yaml.DocumentNode, yaml.SequenceNode:
+		for _, c := range n.Content {
+			expandNode(c, missing)
+		}
+	case yaml.AliasNode:
+	}
+}
+
+func expandEnvVars(value string, missing *[]string) string {
+	return envVarPattern.ReplaceAllStringFunc(value, func(match string) string {
+		parts := envVarPattern.FindStringSubmatchIndex(match)
+		name := match[parts[2]:parts[3]]
+
+		if v := os.Getenv(name); v != "" {
+			return v
+		}
+
+		if parts[4] >= 0 {
+			return match[parts[4]:parts[5]]
+		}
+
+		if !slices.Contains(*missing, name) {
+			*missing = append(*missing, name)
+		}
+
+		return ""
+	})
+}
+
 //export Init
 func Init(configJSON *byte) int32 {
 	l := logrus.New()
@@ -43,7 +128,7 @@ func Init(configJSON *byte) int32 {
 
 	var config *Config
 
-	err := yaml.Unmarshal([]byte(goConfigData), &config)
+	err := decodeConfig([]byte(goConfigData), &config)
 	if err != nil {
 		log.WithError(err).Error("Failed to parse configuration")
 		return -1
