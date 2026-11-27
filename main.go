@@ -6,6 +6,7 @@ package main
 */
 import "C" //nolint:gocritic // C is a special CGO import, not a duplicate of unsafe
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -43,15 +44,15 @@ var envVarPattern = regexp.MustCompile(`\$\{([^}:]+)(?::-([^}]*))?\}`)
 // whose VAR is unset or empty is an error. A ${VAR:-default} uses the default
 // when VAR is unset or empty.
 func decodeConfig(data []byte, out any) error {
+	if !bytes.Contains(data, []byte("${")) {
+		return yaml.Unmarshal(data, out)
+	}
+
 	var doc yaml.Node
 
 	err := yaml.Unmarshal(data, &doc)
 	if err != nil {
 		return err
-	}
-
-	if doc.Kind == 0 {
-		return nil
 	}
 
 	var missing []string
@@ -77,8 +78,14 @@ func expandNode(n *yaml.Node, missing *[]string) {
 
 		// The parser tagged the placeholder !!str; clearing the tag lets an
 		// unquoted value resolve to int, bool, etc. as if written in the file.
+		// A value that would resolve to null stays a string instead of
+		// silently decoding as empty.
 		if n.Style == 0 {
 			n.Tag = ""
+
+			if n.ShortTag() == "!!null" {
+				n.Tag = "!!str"
+			}
 		}
 	case yaml.MappingNode:
 		for i := 1; i < len(n.Content); i += 2 {
@@ -89,6 +96,7 @@ func expandNode(n *yaml.Node, missing *[]string) {
 			expandNode(c, missing)
 		}
 	case yaml.AliasNode:
+		// An alias decodes its anchor's node, which is expanded where it is defined.
 	}
 }
 

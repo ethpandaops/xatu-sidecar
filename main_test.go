@@ -109,6 +109,13 @@ func TestDecodeConfig(t *testing.T) {
 			set:     map[string]string{"PORT": "8080", "ENABLED": "true"},
 			want:    map[string]any{"port": 8080, "quoted": "8080", "enabled": true},
 		},
+		{
+			name:    "unquoted value that resolves to null stays a string",
+			content: "a: ${NULL_WORD}\nb: ${NULL_TILDE}\nc: ${NULL_UNSET:-}",
+			set:     map[string]string{"NULL_WORD": "null", "NULL_TILDE": "~"},
+			unset:   []string{"NULL_UNSET"},
+			want:    map[string]any{"a": "null", "b": "~", "c": ""},
+		},
 	}
 
 	for _, tt := range tests {
