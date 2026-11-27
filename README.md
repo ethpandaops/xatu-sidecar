@@ -125,7 +125,8 @@ processor:
   comments are never expanded, and a value containing quotes, `#`, tabs or
   newlines arrives exactly as set.
 - An unquoted placeholder takes the type of its value, so `port: ${PORT}` can
-  fill a number. A quoted placeholder is always a string.
+  fill a number. A quoted placeholder, or a value such as `null` that would
+  otherwise decode as empty, is always a string.
 
 ## FFI Event Payloads
 
