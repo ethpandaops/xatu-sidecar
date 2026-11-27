@@ -77,6 +77,8 @@ const (
 	EventTypeDataColumnCompleted EventType = "DATA_COLUMN_COMPLETED"
 	// EventTypePartialDataColumnOutcome represents the validation verdict for a received partial data column.
 	EventTypePartialDataColumnOutcome EventType = "PARTIAL_DATA_COLUMN_OUTCOME"
+	// EventTypeInclusionList represents an EIP-7805 (FOCIL) signed inclusion list event.
+	EventTypeInclusionList EventType = "INCLUSION_LIST"
 )
 
 // decoratedEventSource is a raw client event that can be filtered and decorated for export.
@@ -435,6 +437,14 @@ func (h *Handler) HandleRawEvent(ctx context.Context, rawEvent json.RawMessage, 
 		}
 
 		return h.exportEvent(ctx, gossipsub.NewPartialDataColumnOutcome(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubPartialDataColumnOutcome, h.blockSlots, clientMeta))
+
+	case EventTypeInclusionList:
+		var eventData gossipsub.RawInclusionList
+		if err := json.Unmarshal(rawEvent, &eventData); err != nil {
+			return err
+		}
+
+		return h.exportEvent(ctx, gossipsub.NewInclusionList(h.log, &eventData, clockDrift, h.wallclock, h.duplicateCache.GossipsubInclusionList, clientMeta))
 
 	default:
 		return ErrUnsupportedEventType

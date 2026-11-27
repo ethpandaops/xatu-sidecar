@@ -18,6 +18,7 @@ type DuplicateCache struct {
 	GossipsubExecutionPayloadBid       *ttlcache.Cache[string, time.Time]
 	GossipsubPayloadAttestationMessage *ttlcache.Cache[string, time.Time]
 	GossipsubProposerPreferences       *ttlcache.Cache[string, time.Time]
+	GossipsubInclusionList             *ttlcache.Cache[string, time.Time]
 	GossipsubPartialDataColumn         *ttlcache.Cache[string, time.Time]
 	GossipsubPartialDataColumnOutcome  *ttlcache.Cache[string, time.Time]
 	DataColumnCompleted                *ttlcache.Cache[string, time.Time]
@@ -61,6 +62,9 @@ func NewDuplicateCache() *DuplicateCache {
 		GossipsubProposerPreferences: ttlcache.New(
 			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
 		),
+		GossipsubInclusionList: ttlcache.New(
+			ttlcache.WithTTL[string, time.Time](ConsensusTTL),
+		),
 		GossipsubPartialDataColumn: ttlcache.New(
 			ttlcache.WithTTL[string, time.Time](PartialTTL),
 		),
@@ -84,6 +88,7 @@ func (d *DuplicateCache) Start() {
 	go d.GossipsubExecutionPayloadBid.Start()
 	go d.GossipsubPayloadAttestationMessage.Start()
 	go d.GossipsubProposerPreferences.Start()
+	go d.GossipsubInclusionList.Start()
 	go d.GossipsubPartialDataColumn.Start()
 	go d.GossipsubPartialDataColumnOutcome.Start()
 	go d.DataColumnCompleted.Start()

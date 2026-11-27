@@ -6,4 +6,5 @@ const (
 	logFieldTimeSinceFirstItem = "time_since_first_item"
 	logFieldSlot               = "slot"
 	logFieldColumnIndex        = "column_index"
+	logFieldValidatorIndex     = "validator_index"
 )
